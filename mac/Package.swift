@@ -2,17 +2,18 @@
 //
 // The native macOS pieces of knob-to-eleven.
 //
-// For now: a single `eleven` CLI target that replaces the bash
-// core/eleven script. Later: a SwiftUI app target that embeds the
-// MicroPython runtime.
+//   ElevenCore — shared library (subprocess lifecycle, runtime discovery)
+//   eleven     — CLI executable (run / test / render subcommands)
+//   ElevenApp  — SwiftUI app
 
 import PackageDescription
 
 let package = Package(
     name: "eleven",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "eleven", targets: ["eleven"])
+        .executable(name: "eleven", targets: ["eleven"]),
+        .executable(name: "ElevenApp", targets: ["ElevenApp"]),
     ],
     dependencies: [
         .package(
@@ -21,12 +22,22 @@ let package = Package(
         )
     ],
     targets: [
+        .target(
+            name: "ElevenCore",
+            path: "Sources/ElevenCore"
+        ),
         .executableTarget(
             name: "eleven",
             dependencies: [
-                .product(name: "ArgumentParser", package: "swift-argument-parser")
+                "ElevenCore",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/eleven"
-        )
+        ),
+        .executableTarget(
+            name: "ElevenApp",
+            dependencies: ["ElevenCore"],
+            path: "Sources/ElevenApp"
+        ),
     ]
 )

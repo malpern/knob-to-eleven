@@ -1,7 +1,7 @@
 import Foundation
 
 /// Discover where things live: MicroPython binary, repo root, core dir.
-enum Runtime {
+public enum Runtime {
 
     /// Path to the lv_micropython binary.
     /// Resolution order:
@@ -9,7 +9,7 @@ enum Runtime {
     /// 2. <repoRoot>/bin/micropython
     /// 3. ~/local-code/worklouder/spikes/lvgl-mpy-macos/lv_micropython/ports/unix/build-lvgl/micropython
     ///    (the dev location while we don't have a bootstrap script yet)
-    static func micropythonBinary() throws -> URL {
+    public static func micropythonBinary() throws -> URL {
         if let env = ProcessInfo.processInfo.environment["ELEVEN_MICROPYTHON"] {
             let url = URL(fileURLWithPath: env)
             if FileManager.default.isExecutableFile(atPath: url.path) {
@@ -44,7 +44,7 @@ enum Runtime {
     /// when run via `swift run`, or from CWD/PATH discovery otherwise.
     /// MVP heuristic: walk up from the running executable to find the dir
     /// containing both `core/` and `mac/`.
-    static func repoRoot() -> URL {
+    public static func repoRoot() -> URL {
         // 1. ELEVEN_REPO_ROOT override (useful for tests)
         if let env = ProcessInfo.processInfo.environment["ELEVEN_REPO_ROOT"] {
             return URL(fileURLWithPath: env)
@@ -67,19 +67,24 @@ enum Runtime {
     }
 
     /// Absolute path to `<repo>/core`.
-    static func coreDir() -> URL {
+    public static func coreDir() -> URL {
         repoRoot().appendingPathComponent("core")
+    }
+
+    /// Absolute path to `<repo>/examples`.
+    public static func examplesDir() -> URL {
+        repoRoot().appendingPathComponent("examples")
     }
 }
 
-enum CLIError: Error, CustomStringConvertible {
+public enum CLIError: Error, CustomStringConvertible {
     case micropythonNotFound(tried: [String], hint: String)
     case appNotFound(path: String)
     case appDirInvalid(path: String, reason: String)
     case workerSpawnFailed(reason: String)
     case generic(String)
 
-    var description: String {
+    public var description: String {
         switch self {
         case .micropythonNotFound(let tried, let hint):
             let triedStr = tried.map { "  - \($0)" }.joined(separator: "\n")

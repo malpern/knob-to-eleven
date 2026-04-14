@@ -1,4 +1,5 @@
 import ArgumentParser
+import ElevenCore
 import Foundation
 
 @main
