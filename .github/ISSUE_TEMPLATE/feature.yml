@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest a new app, DSL primitive, CLI feature, or design change
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What you want
+      description: One paragraph describing the feature.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: |
+        Who benefits, and what does it unblock? If this is a DSL or design
+        change, explain how it fits the [design language](../../docs/design-language.md).
+    validations:
+      required: true
+
+  - type: textarea
+    id: shape
+    attributes:
+      label: Rough shape (optional)
+      description: |
+        If you have a sketch — code snippet, mock-up, API surface — share
+        it. Not required.
+      render: text
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Area
+      options:
+        - DSL primitive
+        - New example app
+        - Swift CLI
+        - Test harness
+        - Documentation
+        - Other
+    validations:
+      required: true

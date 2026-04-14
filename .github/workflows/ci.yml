@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Build + test on macOS
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Homebrew dependencies
+        run: |
+          brew install sdl2 cmake openjdk@21 pkg-config
+          # openjdk@21 is keg-only — expose it for any build step that
+          # needs JAVA_HOME (lv_micropython submodule occasionally invokes
+          # gradle for its dev tools).
+          echo "JAVA_HOME=$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home" >> $GITHUB_ENV
+
+      # Cache the lv_micropython clone + build artifacts. Keyed on the
+      # bootstrap script content so any change to flags, version pin, or
+      # build steps invalidates the cache.
+      - name: Cache lv_micropython
+        id: cache-mpy
+        uses: actions/cache@v4
+        with:
+          path: |
+            lib/lv_micropython
+            bin/micropython
+          key: lvmpy-${{ runner.os }}-${{ hashFiles('bin/bootstrap.sh') }}
+
+      - name: Bootstrap (build lv_micropython + Swift CLI)
+        run: bin/bootstrap.sh
+
+      - name: Run test suite
+        run: tests/run_all.sh
+
+      - name: Upload rendered example PNGs (debugging aid on failure)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-output
+          path: /tmp/eleven_render_test/
+          if-no-files-found: ignore

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Work Louder firmware / hardware
+    url: https://worklouder.cc
+    about: This project is unaffiliated with Work Louder. For firmware bugs, hardware questions, or product requests, contact them directly.

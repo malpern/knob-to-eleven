@@ -1,0 +1,53 @@
+name: Bug report
+description: Something doesn't work the way it should
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: A clear description of the bug + what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: |
+        Smallest possible app.py / test.py / command that triggers the bug.
+        Inline the file contents if short.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: |
+        Run these and paste the output:
+        ```
+        sw_vers
+        swift --version
+        bin/micropython -c 'import lvgl as lv; print(lv.version_major())' 2>&1
+        ```
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output / traceback
+      render: shell
+
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Sanity checks
+      options:
+        - label: I ran `bin/bootstrap.sh` cleanly
+          required: true
+        - label: I ran `tests/run_all.sh` and it passed *before* hitting the bug
+          required: false
