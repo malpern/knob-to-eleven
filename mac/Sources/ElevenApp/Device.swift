@@ -10,6 +10,9 @@ struct Device: Identifiable, Hashable {
     let photoExtension: String
     /// Screen rectangle in the photo's *natural* pixel coords.
     let screenRect: CGRect
+    /// Corner radius of the screen, in *photo-pixel* units. 0 = sharp
+    /// corners. Rendered proportionally when displayed.
+    let screenCornerRadius: CGFloat
     /// The device's actual screen geometry in physical pixels.
     let screenSize: CGSize
     /// The portion of the photo to show by default — focuses on the screen
@@ -43,7 +46,10 @@ extension Device {
         displayName: "k·no·b·1",
         photoResource: "knob-01",
         photoExtension: "png",
-        screenRect: CGRect(x: 3415, y: 859, width: 163, height: 567),
+        // Calibrated against knob-01.png in-app (⌘E calibration, copy).
+        // 595/192 = 3.099, matching the device's 310/100 physical aspect.
+        screenRect: CGRect(x: 3407, y: 857, width: 192, height: 595),
+        screenCornerRadius: 64,
         screenSize: CGSize(width: 100, height: 310),
         // Right portion of the keyboard — screen module, two encoders,
         // and the action keys. Skips most of the QWERTY field.

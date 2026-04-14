@@ -10,8 +10,12 @@ struct ElevenAppMain: App {
         WindowGroup("eleven") {
             ContentView(examples: $examples, selection: $selection)
                 .frame(minWidth: 720, minHeight: 480)
+                // Allow content to extend under the traffic-light area so
+                // the device preview uses the full window height.
+                .ignoresSafeArea()
         }
         .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unifiedCompact)
         .commands {
             CommandGroup(after: .newItem) {
                 Button("Refresh examples") {

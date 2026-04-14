@@ -4,86 +4,30 @@ import Foundation
 
 struct DetailView: View {
     let example: Example
+    var calibrationBinding: Binding<CGRect>? = nil
+    var cornerRadius: CGFloat = 0
     @State private var session: RunSession?
     @State private var renderingPNG = false
     @State private var screenImage: NSImage?
     @State private var showConsole = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(example.displayName)
-                        .font(.title2.bold().monospaced())
-                    Spacer()
-                    StatusPill(state: session?.state ?? .idle)
-                }
-                if !example.summary.isEmpty {
-                    Text(example.summary)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                Text(example.appPath.path)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.tertiary)
-                    .truncationMode(.head)
-            }
-            .padding()
+        HStack(spacing: 0) {
+            // Full-height device preview — no padding, so the photo uses
+            // every pixel of available height
+            DeviceView(device: .knob1,
+                       screenContent: screenImage,
+                       editableRect: calibrationBinding,
+                       cornerRadius: cornerRadius)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Toolbar
-            HStack(spacing: 12) {
-                Button {
-                    if isRunning { stop() } else { run() }
-                } label: {
-                    Label(isRunning ? "Stop" : "Run",
-                          systemImage: isRunning ? "stop.fill" : "play.fill")
-                }
-                .keyboardShortcut(isRunning ? "." : "r", modifiers: .command)
-                .buttonStyle(.borderedProminent)
-                .tint(isRunning ? .red : .accentColor)
+            Divider()
 
-                Button {
-                    render()
-                } label: {
-                    Label(renderingPNG ? "Rendering…" : "Render PNG",
-                          systemImage: "camera.fill")
-                }
-                .disabled(renderingPNG)
-
-                Button {
-                    NSWorkspace.shared.open(example.appPath)
-                } label: {
-                    Label("Open app.py", systemImage: "pencil.circle")
-                }
-                Spacer()
-            }
-            .padding(.horizontal)
-
-            Divider().padding(.vertical, 8)
-
-            // Main content: device photo (default) or console
-            if showConsole {
-                ConsolePane(lines: session?.lines ?? [])
-                    .padding(.horizontal)
-                    .padding(.bottom)
-            } else {
-                DeviceView(device: .knob1, screenContent: screenImage)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding()
-            }
+            // Right panel: metadata + actions + (optional) console
+            rightPanel
+                .frame(width: 320)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Picker("View", selection: $showConsole) {
-                    Image(systemName: "rectangle.on.rectangle").tag(false)
-                    Image(systemName: "terminal").tag(true)
-                }
-                .pickerStyle(.segmented)
-                .help("Toggle device preview / console")
-            }
-        }
         .onChange(of: example.id) {
             session?.stop()
             session = nil
@@ -94,6 +38,94 @@ struct DetailView: View {
         .onAppear {
             renderForPreview()
         }
+    }
+
+    @ViewBuilder
+    private var rightPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(example.displayName)
+                        .font(.title3.bold().monospaced())
+                    Spacer()
+                }
+                StatusPill(state: session?.state ?? .idle)
+                if !example.summary.isEmpty {
+                    Text(example.summary)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Text(example.appPath.path)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.tertiary)
+                    .truncationMode(.head)
+                    .lineLimit(2)
+            }
+            .padding()
+
+            Divider()
+
+            // Actions — vertical list, full width
+            VStack(spacing: 8) {
+                Button {
+                    if isRunning { stop() } else { run() }
+                } label: {
+                    Label(isRunning ? "Stop" : "Run",
+                          systemImage: isRunning ? "stop.fill" : "play.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .keyboardShortcut(isRunning ? "." : "r", modifiers: .command)
+                .buttonStyle(.borderedProminent)
+                .tint(isRunning ? .red : .accentColor)
+                .controlSize(.large)
+
+                Button {
+                    render()
+                } label: {
+                    Label(renderingPNG ? "Rendering…" : "Render PNG",
+                          systemImage: "camera.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .disabled(renderingPNG)
+                .controlSize(.large)
+
+                Button {
+                    NSWorkspace.shared.open(example.appPath)
+                } label: {
+                    Label("Open app.py", systemImage: "pencil.circle")
+                        .frame(maxWidth: .infinity)
+                }
+                .controlSize(.large)
+            }
+            .padding()
+
+            Divider()
+
+            // Console — collapsible at bottom
+            DisclosureGroup(isExpanded: $showConsole) {
+                ConsolePane(lines: session?.lines ?? [])
+                    .frame(minHeight: 180)
+                    .padding(.top, 4)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "terminal")
+                    Text("Console")
+                        .font(.caption.weight(.medium))
+                    Spacer()
+                    if let count = session?.lines.count, count > 0 {
+                        Text("\(count)")
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding()
+
+            Spacer(minLength: 0)
+        }
+        .background(.background)
     }
 
     private var isRunning: Bool {

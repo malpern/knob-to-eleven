@@ -11,43 +11,42 @@ import AppKit
 struct DeviceView: View {
     let device: Device
     let screenContent: NSImage?
+    /// When set, the view enters calibration mode: shows the screenRect
+    /// as a draggable overlay, writes new coordinates back through the
+    /// binding in photo-pixel coordinates.
+    var editableRect: Binding<CGRect>? = nil
+    /// Corner radius for the screen content mask, in *photo-pixel* units.
+    /// Defaults to the device's own value but can be overridden (e.g.
+    /// during calibration) via this binding.
+    var cornerRadius: CGFloat? = nil
 
     var body: some View {
         if let cropped = device.croppedFocus() {
-            Image(nsImage: cropped)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .overlay {
-                    GeometryReader { geo in
-                        // geo.size is the image's displayed size — already
-                        // the correct aspect ratio. Position screen overlay
-                        // relative to it.
-                        let scale = geo.size.width / device.focusRect.width
-                        let sr = device.screenRect
-                        let fr = device.focusRect
-                        let sx = (sr.minX - fr.minX) * scale
-                        let sy = (sr.minY - fr.minY) * scale
-                        let sw = sr.width * scale
-                        let sh = sr.height * scale
+            // Scale to fill the available HEIGHT (aspect preserved), then
+            // size the image to its naturally-scaled width so it doesn't
+            // push past the pane horizontally. GeometryReader gives us
+            // the displayed size for overlay positioning.
+            GeometryReader { container in
+                let aspect = device.focusRect.width / device.focusRect.height
+                // Height-driven sizing:
+                let imgH = container.size.height
+                let imgW = imgH * aspect
+                // Center horizontally if pane is wider than image
+                let xPad = max(0, (container.size.width - imgW) / 2)
 
-                        Group {
-                            if let content = screenContent {
-                                Image(nsImage: content)
-                                    .resizable()
-                                    .interpolation(.none)
-                                    .frame(width: sw, height: sh)
-                            } else {
-                                RoundedRectangle(cornerRadius: max(2, 6 * scale))
-                                    .strokeBorder(Color.white.opacity(0.4),
-                                                  style: StrokeStyle(lineWidth: 2,
-                                                                     dash: [4, 3]))
-                                    .frame(width: sw, height: sh)
-                            }
-                        }
-                        .offset(x: sx, y: sy)
-                    }
+                ZStack(alignment: .topLeading) {
+                    Image(nsImage: cropped)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: imgW, height: imgH)
+                        .offset(x: xPad, y: 0)
+
+                    // Screen overlay — uses the editable rect when
+                    // calibration mode is active so button clicks move
+                    // and resize the live screen content itself.
+                    overlayView(imgWidth: imgW, imgHeight: imgH, xPad: xPad)
                 }
+            }
         } else {
             ZStack {
                 Color.red.opacity(0.4)
@@ -58,6 +57,32 @@ struct DeviceView: View {
                 }
                 .foregroundStyle(.white)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func overlayView(imgWidth: CGFloat, imgHeight: CGFloat, xPad: CGFloat)
+        -> some View
+    {
+        if let content = screenContent {
+            // During calibration, use the editable rect so the screen
+            // content itself moves + resizes live. Otherwise use the
+            // device's canonical screenRect.
+            let sr = editableRect?.wrappedValue ?? device.screenRect
+            let scale = imgWidth / device.focusRect.width
+            let fr = device.focusRect
+            let sx = (sr.minX - fr.minX) * scale + xPad
+            let sy = (sr.minY - fr.minY) * scale
+            let sw = sr.width * scale
+            let sh = sr.height * scale
+            let radius = (cornerRadius ?? device.screenCornerRadius) * scale
+
+            Image(nsImage: content)
+                .resizable()
+                .interpolation(.none)
+                .frame(width: sw, height: sh)
+                .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+                .offset(x: sx, y: sy)
         }
     }
 }

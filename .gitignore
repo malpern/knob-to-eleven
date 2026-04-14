@@ -9,6 +9,8 @@ DerivedData/
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 xcuserdata/
+# Packaged .app bundle — rebuilt by scripts/compile_and_run.sh
+mac/*.app
 # Package.resolved IS checked in for executables (reproducible builds)
 
 # C / MicroPython / LVGL build artifacts

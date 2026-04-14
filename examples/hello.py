@@ -7,11 +7,10 @@ import wlsdk
 
 arc = None
 label = None
-footer = None
 
 
 def start():
-    global arc, label, footer
+    global arc, label
     scr = lv_root
     scr.set_style_bg_color(lv.color_hex(0x000000), 0)
 
@@ -35,11 +34,6 @@ def start():
     label.align(lv.ALIGN.CENTER, 0, 30)
     label.set_text("0%")
 
-    footer = lv.label(scr)
-    footer.set_style_text_font(wlsdk.ui.FONT.SMALL, 0)
-    footer.set_style_text_color(lv.color_hex(0x888888), 0)
-    footer.align(lv.ALIGN.BOTTOM_MID, 0, -12)
-    footer.set_text(wlsdk.sys.get_platform_name())
 
 
 def update():
