@@ -50,10 +50,10 @@ def _render():
 def start():
     global arc, time_disp, status
     scr = screen()
-    arc = dial(scr, value=100, size=150, width=10, offset_y=-30)
-    time_disp = segment(scr, text="25:00", offset_y=-30)
+    arc = dial(scr, value=100, offset_y=-50)
+    time_disp = segment(scr, text="25:00", offset_y=25)
     status = label(scr, text="READY", color=theme.muted, font="small",
-                   align="center", offset_y=80)
+                   align="bottom", offset_y=-16)
     wlsdk.ui.set_grab_input(True)
     _render()
 

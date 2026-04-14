@@ -20,10 +20,10 @@ def _render():
 def start():
     global arc, pct_label, status
     scr = screen()
-    arc = dial(scr, value=0, size=150, width=10, offset_y=-30)
-    pct_label = segment(scr, text="--", offset_y=-30)
+    arc = dial(scr, value=0, offset_y=-50)
+    pct_label = segment(scr, text="--", offset_y=25)
     status = label(scr, text="waiting...", color=theme.muted, font="small",
-                   align="center", offset_y=80)
+                   align="bottom", offset_y=-16)
 
 
 def on_cpu_update(ctx, params):

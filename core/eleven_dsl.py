@@ -85,11 +85,13 @@ def screen(bg=None):
 
 
 def dial(parent, value=0, value_range=(0, 100),
-         color=None, track=None, width=12,
-         size=140, align="center", offset_x=0, offset_y=0):
+         color=None, track=None, width=8,
+         size=84, align="center", offset_x=0, offset_y=0):
     """Circular gauge: arc indicator on a dimmer arc track.
 
     Returns the underlying lv.arc — call set_value(N) on it to update.
+    Sized for the knob's 100×310 screen by default; pass `size=` to
+    override for wider devices.
     """
     a = lv.arc(parent)
     a.set_size(size, size)
@@ -98,6 +100,7 @@ def dial(parent, value=0, value_range=(0, 100),
     a.set_rotation(270)
     a.set_bg_angles(0, 360)
     a.remove_style(None, lv.PART.KNOB)
+    a.remove_flag(lv.obj.FLAG.CLICKABLE)  # purely visual; don't grab input
     indicator_c = _resolve_color(color, theme.accent)
     track_c = _resolve_color(track, theme.dim)
     a.set_style_arc_color(indicator_c, lv.PART.INDICATOR)
@@ -110,7 +113,7 @@ def dial(parent, value=0, value_range=(0, 100),
 
 def bar(parent, value=0, value_range=(0, 100),
         color=None, track=None,
-        width=120, height=10, align="center", offset_x=0, offset_y=0):
+        width=84, height=8, align="center", offset_x=0, offset_y=0):
     """Horizontal level meter. Returns lv.bar."""
     b = lv.bar(parent)
     b.set_size(width, height)

@@ -35,10 +35,10 @@ def start():
     title.set_style_text_font(wlsdk.ui.FONT.SMALL, 0)
     title.align(lv.ALIGN.TOP_MID, 0, 12)
 
-    # Sparkline (lv.chart)
+    # Sparkline (lv.chart) — sized for the knob's 100-wide screen
     chart = lv.chart(scr)
-    chart.set_size(150, 80)
-    chart.align(lv.ALIGN.CENTER, 0, -20)
+    chart.set_size(84, 60)
+    chart.align(lv.ALIGN.CENTER, 0, -50)
     chart.set_type(lv.chart.TYPE.LINE)
     chart.set_axis_range(lv.chart.AXIS.PRIMARY_Y, 0, 100)
     chart.set_point_count(N_SAMPLES)
@@ -59,7 +59,7 @@ def start():
     big_num = lv.label(scr)
     big_num.set_style_text_font(wlsdk.ui.FONT.BIG, 0)
     big_num.set_style_text_color(lv.color_hex(theme.fg), 0)
-    big_num.align(lv.ALIGN.CENTER, 0, 60)
+    big_num.align(lv.ALIGN.CENTER, 0, 30)
     big_num.set_text("0")
 
     # Unit label ("%") right of the big number
