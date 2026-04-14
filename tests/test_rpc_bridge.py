@@ -14,7 +14,7 @@ import subprocess
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ELEVEN = os.path.join(REPO_ROOT, "core", "eleven")
+ELEVEN = os.environ.get("ELEVEN_BIN", os.path.join(REPO_ROOT, "core", "eleven"))
 CPU_DIR = os.path.join(REPO_ROOT, "examples", "cpu")
 
 # Patch app.py briefly to add a print on cpu.update so we can verify

@@ -5,7 +5,17 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ELEVEN="$REPO_ROOT/core/eleven"
+
+# Prefer the Swift CLI if it's been built; fall back to the bash CLI.
+SWIFT_BIN="$REPO_ROOT/mac/.build/debug/eleven"
+if [[ -x "$SWIFT_BIN" ]]; then
+    ELEVEN="$SWIFT_BIN"
+    echo "(using swift CLI: $SWIFT_BIN)"
+else
+    ELEVEN="$REPO_ROOT/core/eleven"
+    echo "(using bash CLI: $ELEVEN — build mac/ to switch to Swift)"
+fi
+export ELEVEN_BIN="$ELEVEN"
 
 fail=0
 pass=0

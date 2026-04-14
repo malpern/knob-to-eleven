@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ELEVEN = os.path.join(REPO_ROOT, "core", "eleven")
+ELEVEN = os.environ.get("ELEVEN_BIN", os.path.join(REPO_ROOT, "core", "eleven"))
 EXAMPLES_DIR = os.path.join(REPO_ROOT, "examples")
 OUT_DIR = "/tmp/eleven_render_test"
 os.makedirs(OUT_DIR, exist_ok=True)

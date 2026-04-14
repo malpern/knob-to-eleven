@@ -5,11 +5,11 @@
 # Swift / Xcode
 .build/
 .swiftpm/
-Package.resolved
 DerivedData/
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 xcuserdata/
+# Package.resolved IS checked in for executables (reproducible builds)
 
 # C / MicroPython / LVGL build artifacts
 build/
