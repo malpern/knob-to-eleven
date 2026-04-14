@@ -30,7 +30,11 @@ def on_cpu_update(ctx, params):
     """Called when worker.py sends wlsdk.cpu.update."""
     global current_pct, last_update_at
     if isinstance(params, dict) and "value" in params:
-        current_pct = float(params["value"])
+        try:
+            v = float(params["value"])
+        except (TypeError, ValueError):
+            return
+        current_pct = max(0.0, min(100.0, v))
         last_update_at = wlsdk.time.get_elapsed()
         _render()
         status.set_text("CPU")

@@ -130,6 +130,32 @@ def inject_button(index=0, state="press"):
         raise ValueError("inject_button state must be 'down', 'up', or 'press'")
 
 
+def inject_rpc(method, params=None):
+    """Synthesize an inbound RPC call from a hypothetical worker.py.
+
+    Calls the handler the app registered via wlsdk.rpc.register(method, cb).
+    The method name is what the app passed to register() — without the
+    "wlsdk." prefix. Returns True if a handler was registered and called,
+    False otherwise.
+
+    Use this for testing RPC-using apps (cpu, mac_live) without spinning
+    up a real worker subprocess. For end-to-end bridge tests, use the
+    test_rpc_bridge.py harness instead.
+    """
+    wlsdk = _state["wlsdk"]
+    handler = wlsdk._RPCState._handlers.get(method)
+    if handler is None:
+        # Allow callers to pass with or without the wlsdk. prefix.
+        if method.startswith("wlsdk."):
+            handler = wlsdk._RPCState._handlers.get(method[len("wlsdk."):])
+        else:
+            handler = wlsdk._RPCState._handlers.get("wlsdk." + method)
+    if handler is None:
+        return False
+    handler(None, params)  # ctx is None in the test harness
+    return True
+
+
 # --- Widget inspection ---
 
 def _walk(obj, out):

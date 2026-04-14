@@ -107,6 +107,23 @@ for kind, val in parse_events(PRE):
         step(1)
     elif kind == "step":
         step(int(val))
+    elif kind == "rpc":
+        # Format: rpc:method.name:value
+        # value is parsed as a number if possible, then wrapped as
+        # {"value": N} — the convention the canonical apps use. For more
+        # complex RPC payloads, add a richer event grammar later.
+        method, _, raw = val.partition(":")
+        if not method or not raw:
+            die("rpc event must be 'rpc:method:value', got: " + repr(val))
+        try:
+            value = float(raw) if "." in raw else int(raw)
+        except ValueError:
+            value = raw
+        handler = wlsdk._RPCState._handlers.get(method)
+        if handler is None:
+            die("no handler registered for RPC method " + repr(method))
+        handler(None, {"value": value})
+        step(1)
     else:
         die("unknown pre-event kind: " + repr(kind))
 
