@@ -15,8 +15,10 @@ struct DetailView: View {
         HStack(spacing: 0) {
             // Full-height device preview — no padding, so the photo uses
             // every pixel of available height
+            // Live frame from the running session takes precedence over
+            // the one-shot rendered PNG. Falls back to the PNG when idle.
             DeviceView(device: .knob1,
-                       screenContent: screenImage,
+                       screenContent: session?.latestFrame ?? screenImage,
                        editableRect: calibrationBinding,
                        cornerRadius: cornerRadius)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

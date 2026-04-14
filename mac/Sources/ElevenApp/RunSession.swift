@@ -1,10 +1,13 @@
 import Foundation
 import Observation
+import CoreGraphics
+import AppKit
 import ElevenCore
 
 /// Drives a single `eleven run` invocation: spawns the subprocess (and
 /// the worker.py if applicable), streams merged stdout to the UI line by
-/// line, exposes a Stop affordance.
+/// line, exposes a Stop affordance, and streams the live framebuffer so
+/// the device-photo preview animates in real time.
 @MainActor
 @Observable
 final class RunSession {
@@ -12,8 +15,14 @@ final class RunSession {
 
     private(set) var state: State = .idle
     private(set) var lines: [String] = []
+    /// Latest live frame from the running app. Updated at display rate.
+    private(set) var latestFrame: NSImage?
+
     private var process: Process?
     private var workerProcess: Process?
+    private var framebuffer: SharedFramebuffer?
+    private var frameTimer: Timer?
+    private var fbPath: String?
     let example: Example
 
     init(_ example: Example) {
@@ -23,11 +32,16 @@ final class RunSession {
     func start() {
         guard state != .running else { return }
         lines.removeAll()
+        latestFrame = nil
         state = .running
 
         let micropython: URL
         do { micropython = try Runtime.micropythonBinary() }
         catch { state = .failed(String(describing: error)); return }
+
+        // Unique path per session — lets us mmap it from Swift.
+        let sessionFBPath = "/tmp/eleven-fb-\(getpid())-\(Int.random(in: 1...9999)).raw"
+        self.fbPath = sessionFBPath
 
         var env = ProcessInfo.processInfo.environment
         env["ELEVEN_APP_PATH"] = example.appPath.path
@@ -36,6 +50,7 @@ final class RunSession {
         env["ELEVEN_CORE_DIR"] = Runtime.coreDir().path
         env["ELEVEN_REPO_ROOT"] = Runtime.repoRoot().path
         env["ELEVEN_PLATFORM"] = env["ELEVEN_PLATFORM"] ?? "knob-v1"
+        env["ELEVEN_FB_PATH"] = sessionFBPath
 
         // Worker.py if this is a project-dir example
         if let worker = example.workerPath {
@@ -61,7 +76,8 @@ final class RunSession {
             }
         }
 
-        let host = Runtime.coreDir().appendingPathComponent("host.py")
+        // Launch the headless host (no SDL window; writes framebuffer to file)
+        let host = Runtime.coreDir().appendingPathComponent("host_headless.py")
         do {
             process = try spawnStreaming(
                 micropython,
@@ -79,11 +95,46 @@ final class RunSession {
             stopWorker()
             return
         }
+
+        // Connect to the shared framebuffer and start polling frames
+        attachFramebuffer(path: sessionFBPath)
+    }
+
+    private func attachFramebuffer(path: String) {
+        Task.detached { [weak self] in
+            // Opening mmaps the file; it waits briefly for the host to create it.
+            let fb: SharedFramebuffer
+            do {
+                fb = try SharedFramebuffer(path: path, width: 100, height: 310)
+            } catch {
+                await MainActor.run {
+                    self?.appendLine("[framebuffer attach failed: \(error)]")
+                }
+                return
+            }
+            await MainActor.run {
+                guard let self else { return }
+                self.framebuffer = fb
+                // Poll at ~60fps
+                self.frameTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0,
+                                                       repeats: true) { [weak self] _ in
+                    Task { @MainActor in self?.pollFrame() }
+                }
+            }
+        }
+    }
+
+    private func pollFrame() {
+        guard let fb = framebuffer,
+              let cgImage = fb.pollForNewFrame() else { return }
+        let size = NSSize(width: CGFloat(fb.width), height: CGFloat(fb.height))
+        latestFrame = NSImage(cgImage: cgImage, size: size)
     }
 
     func stop() {
         process?.terminate()
         stopWorker()
+        stopFramebuffer()
     }
 
     private func stopWorker() {
@@ -91,6 +142,16 @@ final class RunSession {
             w.terminate()
         }
         workerProcess = nil
+    }
+
+    private func stopFramebuffer() {
+        frameTimer?.invalidate()
+        frameTimer = nil
+        framebuffer = nil
+        if let path = fbPath {
+            try? FileManager.default.removeItem(atPath: path)
+        }
+        fbPath = nil
     }
 
     private func appendLine(_ line: String) {
@@ -103,6 +164,7 @@ final class RunSession {
 
     private func handleExit(_ status: Int32) {
         stopWorker()
+        stopFramebuffer()
         if state == .running {
             state = .exited(status)
         }
