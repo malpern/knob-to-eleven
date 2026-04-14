@@ -6,13 +6,36 @@ struct ContentView: View {
     @Binding var selection: Example.ID?
     @State private var editableRect: CGRect = Device.knob1.screenRect
     @State private var editableCornerRadius: CGFloat = Device.knob1.screenCornerRadius
+    @State private var editableBackingRect: CGRect = Device.knob1.screenBackingRect
     @State private var isCalibrating = false
 
     var body: some View {
         NavigationSplitView {
-            List(examples, selection: $selection) { example in
-                NavigationLink(value: example.id) {
-                    ExampleRow(example: example)
+            List(selection: $selection) {
+                // "No app" row — deselects any currently-picked example and
+                // shows the plain device photo. Using a tap gesture (rather
+                // than relying on List's selection machinery with a
+                // sentinel ID) so the List's own selection state still
+                // cleanly represents "an example is selected" vs nil.
+                HStack(spacing: 6) {
+                    Image(systemName: "square.dashed")
+                        .foregroundStyle(.secondary)
+                        .imageScale(.small)
+                    Text("No app")
+                        .font(.body.monospaced())
+                        .foregroundStyle(selection == nil ? .primary : .secondary)
+                    Spacer()
+                }
+                .padding(.vertical, 2)
+                .contentShape(Rectangle())
+                .onTapGesture { selection = nil }
+
+                Section("Examples") {
+                    ForEach(examples) { example in
+                        NavigationLink(value: example.id) {
+                            ExampleRow(example: example)
+                        }
+                    }
                 }
             }
             .navigationTitle("Examples")
@@ -23,18 +46,21 @@ struct ContentView: View {
                     DetailView(
                         example: example,
                         calibrationBinding: isCalibrating ? $editableRect : nil,
-                        cornerRadius: isCalibrating ? editableCornerRadius : Device.knob1.screenCornerRadius
+                        cornerRadius: isCalibrating ? editableCornerRadius : Device.knob1.screenCornerRadius,
+                        backingBinding: isCalibrating ? $editableBackingRect : nil
                     )
                 } else {
                     WelcomeView(
                         calibrationBinding: isCalibrating ? $editableRect : nil,
-                        cornerRadius: isCalibrating ? editableCornerRadius : Device.knob1.screenCornerRadius
+                        cornerRadius: isCalibrating ? editableCornerRadius : Device.knob1.screenCornerRadius,
+                        backingBinding: isCalibrating ? $editableBackingRect : nil
                     )
                 }
 
                 if isCalibrating {
                     CalibrationBanner(rect: $editableRect,
-                                      cornerRadius: $editableCornerRadius) {
+                                      cornerRadius: $editableCornerRadius,
+                                      backingRect: $editableBackingRect) {
                         isCalibrating = false
                     }
                     .padding(.top, 12)
@@ -54,13 +80,15 @@ struct ContentView: View {
 struct WelcomeView: View {
     let calibrationBinding: Binding<CGRect>?
     let cornerRadius: CGFloat
+    let backingBinding: Binding<CGRect>?
 
     var body: some View {
         HStack(spacing: 0) {
             // Device photo in its native state — no simulator overlay.
             DeviceView(device: .knob1, screenContent: nil,
                        editableRect: calibrationBinding,
-                       cornerRadius: cornerRadius)
+                       cornerRadius: cornerRadius,
+                       editableBackingRect: backingBinding)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
@@ -90,6 +118,7 @@ struct WelcomeView: View {
 struct CalibrationBanner: View {
     @Binding var rect: CGRect
     @Binding var cornerRadius: CGFloat
+    @Binding var backingRect: CGRect
     var onDone: () -> Void
     @State private var step: CGFloat = 2   // photo pixels per click
 
@@ -180,6 +209,43 @@ struct CalibrationBanner: View {
                     .frame(width: 60, alignment: .leading)
                 Spacer()
             }
+
+            Divider().padding(.vertical, 2)
+
+            // Backing readout
+            HStack(spacing: 12) {
+                Image(systemName: "rectangle.fill")
+                    .imageScale(.small)
+                    .foregroundStyle(.secondary)
+                Text(String(format: "Backing  x=%.0f  y=%.0f  w=%.0f  h=%.0f",
+                            backingRect.minX, backingRect.minY,
+                            backingRect.width, backingRect.height))
+                    .font(.caption.monospaced())
+                Spacer()
+                Button("Match screen") {
+                    backingRect = rect
+                }
+                .controlSize(.small)
+            }
+
+            // Backing position + size
+            HStack(spacing: 12) {
+                Text("Move").font(.caption.weight(.medium))
+                backingNudge("arrow.left",  dx: -step)
+                backingNudge("arrow.right", dx:  step)
+                backingNudge("arrow.up",    dy: -step)
+                backingNudge("arrow.down",  dy:  step)
+
+                Divider().frame(height: 20)
+
+                Text("Size").font(.caption.weight(.medium))
+                backingSizeButton("chevron.left.2",  axis: .x, by: -step)
+                backingSizeButton("chevron.right.2", axis: .x, by:  step)
+                backingSizeButton("chevron.up.2",    axis: .y, by: -step)
+                backingSizeButton("chevron.down.2",  axis: .y, by:  step)
+
+                Spacer()
+            }
         }
         .padding(.horizontal, 16).padding(.vertical, 12)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -204,6 +270,28 @@ struct CalibrationBanner: View {
             let newW = max(8, rect.width + amount)
             let newH = newW * physicalAspect
             rect.size = CGSize(width: newW, height: newH)
+        } label: {
+            Image(systemName: icon).frame(width: 20, height: 20)
+        }
+    }
+
+    private enum Axis { case x, y }
+
+    private func backingNudge(_ icon: String, dx: CGFloat = 0, dy: CGFloat = 0) -> some View {
+        Button {
+            backingRect.origin.x += dx
+            backingRect.origin.y += dy
+        } label: {
+            Image(systemName: icon).frame(width: 20, height: 20)
+        }
+    }
+
+    private func backingSizeButton(_ icon: String, axis: Axis, by amount: CGFloat) -> some View {
+        Button {
+            switch axis {
+            case .x: backingRect.size.width  = max(8, backingRect.width  + amount)
+            case .y: backingRect.size.height = max(8, backingRect.height + amount)
+            }
         } label: {
             Image(systemName: icon).frame(width: 20, height: 20)
         }

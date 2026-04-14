@@ -6,10 +6,35 @@ struct DetailView: View {
     let example: Example
     var calibrationBinding: Binding<CGRect>? = nil
     var cornerRadius: CGFloat = 0
+    var backingBinding: Binding<CGRect>? = nil
     @State private var session: RunSession?
     @State private var renderingPNG = false
     @State private var screenImage: NSImage?
     @State private var showConsole = false
+    /// Clock-card tuning — live-applied. Clock.py polls
+    /// `/tmp/eleven_clock_tuning.json` each frame.
+    @State private var clockCardRadius: Double = 20
+    @State private var clockCardW: Double = 91
+    @State private var clockCardH: Double = 68
+    @State private var clockCardX: Double = 0
+    @State private var clockCardY: Double = 5
+    /// Reference-photo overlay. When `> 0`, DeviceView draws
+    /// `references/clock-native.png` on top of the running screen at
+    /// this opacity so you can eyeball alignment against the native
+    /// widget.
+    @State private var referenceOpacity: Double = 0
+    /// Hidden by default — toggle via Settings → Developer.
+    @AppStorage("showClockTuning") private var showClockTuning: Bool = false
+
+    /// Cached reference image. Bundle.module resource lookups flatten
+    /// the folder hierarchy, so the filename alone is enough.
+    static let clockReferenceImage: NSImage? = {
+        if let url = Bundle.module.url(forResource: "clock-native",
+                                       withExtension: "png") {
+            return NSImage(contentsOf: url)
+        }
+        return nil
+    }()
 
     var body: some View {
         HStack(spacing: 0) {
@@ -20,7 +45,13 @@ struct DetailView: View {
             DeviceView(device: .knob1,
                        screenContent: session?.latestFrame ?? screenImage,
                        editableRect: calibrationBinding,
-                       cornerRadius: cornerRadius)
+                       cornerRadius: cornerRadius,
+                       editableBackingRect: backingBinding,
+                       referenceImage: (showClockTuning && referenceOpacity > 0) ? Self.clockReferenceImage : nil,
+                       referenceOpacity: referenceOpacity,
+                       onEncoder: { delta in
+                           session?.injectEncoder(delta)
+                       })
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
@@ -94,14 +125,25 @@ struct DetailView: View {
                 .controlSize(.large)
 
                 Button {
-                    NSWorkspace.shared.open(example.appPath)
+                    openInZed(example.appPath)
                 } label: {
-                    Label("Open app.py", systemImage: "pencil.circle")
+                    Label("Open app.py in Zed", systemImage: "pencil.circle")
                         .frame(maxWidth: .infinity)
                 }
                 .controlSize(.large)
             }
             .padding()
+
+            // Per-app live tuning for the clock. Values written as JSON
+            // to /tmp/eleven_clock_tuning.json; Python polls each frame.
+            // Hidden by default — enable via Settings → Developer.
+            if showClockTuning &&
+               (example.id.hasSuffix("clock.py") ||
+                example.displayName.lowercased().contains("clock")) {
+                Divider()
+                clockTuningPanel
+                    .padding()
+            }
 
             Divider()
 
@@ -134,10 +176,113 @@ struct DetailView: View {
         session?.state == .running
     }
 
+    @ViewBuilder
+    private var clockTuningPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Clock tuning")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            // Readout — all current values on one monospaced line so
+            // they're always visible.
+            Text(String(format: "x=%d  y=%d  w=%d  h=%d  r=%d",
+                        Int(clockCardX), Int(clockCardY),
+                        Int(clockCardW), Int(clockCardH),
+                        Int(clockCardRadius)))
+                .font(.caption.monospaced())
+                .foregroundStyle(.primary)
+
+            // Position nudges
+            HStack(spacing: 6) {
+                Text("Position").font(.caption).frame(width: 60, alignment: .leading)
+                tuningNudge("arrow.left")  { clockCardX -= 1; commitTuning() }
+                tuningNudge("arrow.right") { clockCardX += 1; commitTuning() }
+                tuningNudge("arrow.up")    { clockCardY -= 1; commitTuning() }
+                tuningNudge("arrow.down")  { clockCardY += 1; commitTuning() }
+                Spacer()
+            }
+
+            tuningSlider(label: "Radius", value: $clockCardRadius, range: 0...45, suffix: "px")
+            tuningSlider(label: "Width",  value: $clockCardW,      range: 20...100, suffix: "px")
+            tuningSlider(label: "Height", value: $clockCardH,      range: 20...200, suffix: "px")
+
+            Divider()
+
+            // Reference-photo overlay
+            HStack(spacing: 6) {
+                Image(systemName: "photo").imageScale(.small)
+                Text("Reference overlay")
+                    .font(.caption.weight(.medium))
+                Spacer()
+                Text("\(Int(referenceOpacity * 100))%")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: $referenceOpacity, in: 0...1)
+        }
+    }
+
+    private func tuningNudge(_ icon: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon).frame(width: 16, height: 16)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+    }
+
+    @ViewBuilder
+    private func tuningSlider(label: String, value: Binding<Double>,
+                              range: ClosedRange<Double>, suffix: String) -> some View {
+        HStack(spacing: 6) {
+            Text(label).font(.caption).frame(width: 60, alignment: .leading)
+            Slider(value: value, in: range, step: 1)
+                .onChange(of: value.wrappedValue) { _, _ in commitTuning() }
+            Text("\(Int(value.wrappedValue)) \(suffix)")
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .frame(width: 48, alignment: .trailing)
+        }
+    }
+
+    private func commitTuning() {
+        writeTuningFile()
+        // If no live session, trigger a fresh preview render so the
+        // static PNG reflects the change too.
+        if !isRunning {
+            renderForPreview()
+        }
+    }
+
+    private func writeTuningFile() {
+        let payload: [String: Int] = [
+            "card_radius": Int(clockCardRadius),
+            "card_w":      Int(clockCardW),
+            "card_h":      Int(clockCardH),
+            "card_x":      Int(clockCardX),
+            "card_y":      Int(clockCardY),
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload) else { return }
+        try? data.write(to: URL(fileURLWithPath: "/tmp/eleven_clock_tuning.json"))
+    }
+
     private func run() {
+        syncTuningStateForSession()
         let s = RunSession(example)
         session = s
         s.start()
+    }
+
+    /// Keep the tuning file in sync with the visible UI before starting
+    /// a session. If the tuning panel is hidden, wipe any stale file so
+    /// clock.py uses its own in-source defaults. If it's visible, write
+    /// the current slider values so they take effect immediately.
+    private func syncTuningStateForSession() {
+        let url = URL(fileURLWithPath: "/tmp/eleven_clock_tuning.json")
+        if showClockTuning {
+            writeTuningFile()
+        } else {
+            try? FileManager.default.removeItem(at: url)
+        }
     }
 
     private func stop() {
@@ -145,6 +290,7 @@ struct DetailView: View {
     }
 
     private func render() {
+        syncTuningStateForSession()
         renderingPNG = true
         Task.detached(priority: .userInitiated) {
             let result = await renderImpl()
@@ -163,6 +309,7 @@ struct DetailView: View {
     /// device-view's screen content. Called on selection change so the
     /// device photo isn't blank when you pick an example.
     private func renderForPreview() {
+        syncTuningStateForSession()
         Task.detached(priority: .background) {
             let result = await renderImpl()
             await MainActor.run {
@@ -209,6 +356,19 @@ struct DetailView: View {
         } catch {
             return nil
         }
+    }
+}
+
+/// Opens `fileURL` in Zed when available; falls back to Launch Services
+/// default so users without Zed still get *some* editor instead of an
+/// error beep. Zed ships with bundle id `dev.zed.Zed`.
+private func openInZed(_ fileURL: URL) {
+    let ws = NSWorkspace.shared
+    if let zed = ws.urlForApplication(withBundleIdentifier: "dev.zed.Zed") {
+        let cfg = NSWorkspace.OpenConfiguration()
+        ws.open([fileURL], withApplicationAt: zed, configuration: cfg)
+    } else {
+        ws.open(fileURL)
     }
 }
 

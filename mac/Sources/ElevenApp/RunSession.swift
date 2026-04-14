@@ -23,6 +23,7 @@ final class RunSession {
     private var framebuffer: SharedFramebuffer?
     private var frameTimer: Timer?
     private var fbPath: String?
+    private var inputPath: String?
     let example: Example
 
     init(_ example: Example) {
@@ -43,6 +44,12 @@ final class RunSession {
         let sessionFBPath = "/tmp/eleven-fb-\(getpid())-\(Int.random(in: 1...9999)).raw"
         self.fbPath = sessionFBPath
 
+        // Input-injection stream. We create the file fresh (truncate)
+        // so host_headless.py starts from offset 0.
+        let sessionInputPath = "/tmp/eleven-input-\(getpid())-\(Int.random(in: 1...9999)).jsonl"
+        FileManager.default.createFile(atPath: sessionInputPath, contents: nil)
+        self.inputPath = sessionInputPath
+
         var env = ProcessInfo.processInfo.environment
         env["ELEVEN_APP_PATH"] = example.appPath.path
         env["ELEVEN_GEOMETRY"] = "100x310"
@@ -51,6 +58,7 @@ final class RunSession {
         env["ELEVEN_REPO_ROOT"] = Runtime.repoRoot().path
         env["ELEVEN_PLATFORM"] = env["ELEVEN_PLATFORM"] ?? "knob-v1"
         env["ELEVEN_FB_PATH"] = sessionFBPath
+        env["ELEVEN_INPUT_PATH"] = sessionInputPath
 
         // Worker.py if this is a project-dir example
         if let worker = example.workerPath {
@@ -135,6 +143,31 @@ final class RunSession {
         process?.terminate()
         stopWorker()
         stopFramebuffer()
+        stopInput()
+    }
+
+    /// Inject a top-encoder tick into the running app. `delta` is +1 for
+    /// clockwise, -1 for counter-clockwise. No-op when nothing's running.
+    func injectEncoder(_ delta: Int) {
+        guard state == .running, let path = inputPath else { return }
+        writeInputLine("{\"type\":\"encoder\",\"idx\":0,\"val\":\(delta)}",
+                       path: path)
+    }
+
+    private func writeInputLine(_ line: String, path: String) {
+        guard let handle = FileHandle(forWritingAtPath: path) else { return }
+        defer { try? handle.close() }
+        try? handle.seekToEnd()
+        if let data = (line + "\n").data(using: .utf8) {
+            try? handle.write(contentsOf: data)
+        }
+    }
+
+    private func stopInput() {
+        if let path = inputPath {
+            try? FileManager.default.removeItem(atPath: path)
+        }
+        inputPath = nil
     }
 
     private func stopWorker() {

@@ -24,5 +24,28 @@ struct ElevenAppMain: App {
                 .keyboardShortcut("r", modifiers: [.command, .shift])
             }
         }
+
+        Settings {
+            SettingsView()
+        }
+    }
+}
+
+struct SettingsView: View {
+    @AppStorage("showClockTuning") private var showClockTuning: Bool = false
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Show clock tuning controls", isOn: $showClockTuning)
+                Text("Exposes card size, position, radius, and reference-overlay controls in the right panel when the Clock example is selected.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Developer")
+            }
+        }
+        .padding(20)
+        .frame(width: 420)
     }
 }

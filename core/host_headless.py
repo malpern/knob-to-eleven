@@ -33,6 +33,11 @@ APP_PATH = os.getenv("ELEVEN_APP_PATH") or die("ELEVEN_APP_PATH not set")
 WIDTH, HEIGHT = parse_geom(os.getenv("ELEVEN_GEOMETRY") or "100x310")
 FB_PATH = os.getenv("ELEVEN_FB_PATH") or die("ELEVEN_FB_PATH not set")
 PLATFORM = os.getenv("ELEVEN_PLATFORM") or "knob-v1"
+# Optional append-only newline-delimited JSON stream the Mac app can
+# write to inject encoder / button events. One message per line, e.g.:
+#   {"type":"encoder","idx":0,"val":-1}
+#   {"type":"button","idx":0,"val":0}   (0 = down, 1 = up)
+INPUT_PATH = os.getenv("ELEVEN_INPUT_PATH") or ""
 
 _this_dir = os.getenv("ELEVEN_CORE_DIR") or "."
 if _this_dir not in sys.path:
@@ -219,11 +224,76 @@ FRAME_MS = 1000 // FPS
 RELOAD_DEBOUNCE_MS = 2000
 
 
+# --- Input injection (encoder / button events from the Mac app) ---
+# The Mac app appends newline-delimited JSON to INPUT_PATH. We remember
+# how far we've read so repeated polls only see new lines.
+_current_app = {"ns": None}
+_input_pos = [0]
+
+
+def _deliver_on_event(etype, idx, val):
+    ns = _current_app["ns"]
+    if not ns:
+        return
+    fn = ns.get("on_event")
+    if not callable(fn):
+        return
+    try:
+        fn(etype, idx, val)
+    except Exception as e:
+        print("eleven-headless: on_event raised: " + str(e))
+        try: sys.print_exception(e)
+        except Exception: pass
+
+
+def _pump_input_file():
+    if not INPUT_PATH:
+        return
+    try:
+        sz = os.stat(INPUT_PATH)[6]
+    except OSError:
+        return
+    # Handle file truncation/recreation between sessions.
+    if sz < _input_pos[0]:
+        _input_pos[0] = 0
+    if sz == _input_pos[0]:
+        return
+    try:
+        f = open(INPUT_PATH, "rb")
+    except OSError:
+        return
+    try:
+        f.seek(_input_pos[0])
+        data = f.read()
+    finally:
+        f.close()
+    _input_pos[0] += len(data)
+    import json as _json
+    for line in data.split(b"\n"):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            msg = _json.loads(line.decode("utf-8"))
+        except Exception:
+            continue
+        t = msg.get("type")
+        if t == "encoder":
+            _deliver_on_event(wlsdk.EVENT.ENCODER,
+                              int(msg.get("idx", 0)),
+                              int(msg.get("val", 0)))
+        elif t == "button":
+            _deliver_on_event(wlsdk.EVENT.BUTTON,
+                              int(msg.get("idx", 0)),
+                              int(msg.get("val", 0)))
+
+
 def run():
     print("eleven-headless: loading " + APP_PATH)
     ns = load_app()
     if callable(ns.get("start")):
         if not safe_call(ns["start"]): ns = None
+    _current_app["ns"] = ns
     current_mtime = file_mtime(APP_PATH)
     change_seen_ms = 0
 
@@ -250,13 +320,16 @@ def run():
                     ns = load_app()
                     if callable(ns.get("start")):
                         if not safe_call(ns["start"]): ns = None
+                    _current_app["ns"] = ns
                 except Exception as e:
                     print("eleven-headless: load failed: " + str(e))
                     ns = None
+                    _current_app["ns"] = None
         else:
             change_seen_ms = 0
 
         _pump_worker()
+        _pump_input_file()
         wlsdk._Time._advance(now)
         lv.tick_inc(dt)
         lv.task_handler()

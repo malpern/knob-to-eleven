@@ -81,7 +81,7 @@ def _pick_font(name_preferred):
 
 
 class _Fonts:
-    BIG = _pick_font(["font_montserrat_28", "font_montserrat_24", "font_montserrat_22"])
+    BIG = _pick_font(["font_montserrat_24", "font_montserrat_bold_24", "font_montserrat_22"])
     MEDIUM = _pick_font(["font_montserrat_16", "font_montserrat_14"])
     SMALL = _pick_font(["font_montserrat_12", "font_montserrat_10", "font_montserrat_14"])
 

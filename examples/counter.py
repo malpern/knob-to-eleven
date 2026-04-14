@@ -34,7 +34,7 @@ def start():
     hint.set_style_text_font(wlsdk.ui.FONT.SMALL, 0)
     hint.set_style_text_color(lv.color_hex(0x888888), 0)
     hint.align(lv.ALIGN.BOTTOM_MID, 0, -14)
-    hint.set_text("turn encoder\npress button to reset")
+    hint.set_text("turn: change\npress: reset")
     hint.set_style_text_align(lv.TEXT_ALIGN.CENTER, 0)
 
     wlsdk.ui.set_grab_input(True)
