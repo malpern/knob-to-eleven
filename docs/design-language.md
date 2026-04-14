@@ -65,19 +65,22 @@ fine) — change *one* color, the rest of the palette adapts.
 ## 3. Typography
 
 The device exposes three fonts via `wlsdk.ui.FONT.{BIG, MEDIUM, SMALL}`.
-The simulator currently substitutes Montserrat at sizes 24/16/12 — a
-**known mismatch**, since:
+**The device actually uses stock LVGL Montserrat** — confirmed via
+firmware string analysis (`font_montserrat_14` is the bound font, plus
+LVGL theme-system size selection for `font_small`/`font_normal`/
+`font_large`). Our simulator's Montserrat substitution at 14/16/24 is
+**already aligned** with the device's choice.
 
-- Montserrat is a humanist sans designed for print, not pixel-honest
-- Anti-aliasing at small sizes blurs the "instrument" feel
-- The actual device fonts are likely something blockier / more
-  bitmap-leaning
+This corrects an earlier draft assumption that the device used a
+pixel/bitmap font. It doesn't. The "modern-retro tactile" aesthetic
+in Fryc's marketing leans **modern** (anti-aliased Montserrat) more
+than **retro** (bitmap). Don't substitute pixel fonts thinking we're
+matching the device — we'd be moving away from the actual look.
 
-**Action:** extract the device fonts from firmware rodata (planned).
-Until then, the simulator's Montserrat substitution is acceptable but
-should be replaced with a more pixel-honest fallback (candidates: IBM
-Plex Mono, Berkeley Mono, JetBrains Mono Bitmap, Geneva, or a small
-bitmap font like 5x7 / 6x10).
+If a designed pixel-art aesthetic is desired for a specific app, a
+user can opt in via `binfont_create` (LVGL's binary font loader,
+which IS exposed in the Python bindings). The DSL should not default
+to it.
 
 **Hierarchy rule:**
 
@@ -196,8 +199,9 @@ When the LLM generates an app, the DSL or the linter should warn on:
 
 ## 9. Open questions
 
-- What are the actual device font names, sizes, and bitmap rasters?
-  (Extractable from firmware rodata.)
+- ~~What are the actual device font names, sizes, and bitmap rasters?~~
+  Resolved: stock LVGL Montserrat, theme-driven sizing. Simulator
+  default already matches.
 - What's the *exact* orange Fryc uses on the knob marketing? `0xFF8800`
   is approximate from this draft.
 - What motion easing does the device firmware actually use for arcs
