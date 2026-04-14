@@ -6,6 +6,8 @@ struct DetailView: View {
     let example: Example
     @State private var session: RunSession?
     @State private var renderingPNG = false
+    @State private var screenImage: NSImage?
+    @State private var showConsole = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -60,15 +62,35 @@ struct DetailView: View {
 
             Divider().padding(.vertical, 8)
 
-            // Console
-            ConsolePane(lines: session?.lines ?? [])
-                .padding(.horizontal)
-                .padding(.bottom)
+            // Main content: device photo (default) or console
+            if showConsole {
+                ConsolePane(lines: session?.lines ?? [])
+                    .padding(.horizontal)
+                    .padding(.bottom)
+            } else {
+                DeviceView(device: .knob1, screenContent: screenImage)
+                    .padding()
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Picker("View", selection: $showConsole) {
+                    Image(systemName: "rectangle.on.rectangle").tag(false)
+                    Image(systemName: "terminal").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .help("Toggle device preview / console")
+            }
         }
         .onChange(of: example.id) {
-            // Switching examples should not leave a previous one running
             session?.stop()
             session = nil
+            screenImage = nil
+            // Auto-render so the device photo isn't empty when you select
+            renderForPreview()
+        }
+        .onAppear {
+            renderForPreview()
         }
     }
 
@@ -94,6 +116,22 @@ struct DetailView: View {
                 renderingPNG = false
                 if let url = result {
                     NSWorkspace.shared.open(url)
+                    // Also pick up the freshly-rendered PNG for the device view
+                    screenImage = NSImage(contentsOf: url)
+                }
+            }
+        }
+    }
+
+    /// Same as render() but doesn't open Preview — just updates the
+    /// device-view's screen content. Called on selection change so the
+    /// device photo isn't blank when you pick an example.
+    private func renderForPreview() {
+        Task.detached(priority: .background) {
+            let result = await renderImpl()
+            await MainActor.run {
+                if let url = result {
+                    screenImage = NSImage(contentsOf: url)
                 }
             }
         }

@@ -37,7 +37,10 @@ let package = Package(
         .executableTarget(
             name: "ElevenApp",
             dependencies: ["ElevenCore"],
-            path: "Sources/ElevenApp"
+            path: "Sources/ElevenApp",
+            resources: [
+                .process("Resources")
+            ]
         ),
     ]
 )
