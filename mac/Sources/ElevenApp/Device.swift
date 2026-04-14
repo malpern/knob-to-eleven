@@ -17,10 +17,18 @@ struct Device: Identifiable, Hashable {
     let focusRect: CGRect
 
     /// Resolved NSImage. Returns nil if the resource isn't bundled.
+    /// (`.process("Resources")` flattens the dir structure, so files
+    /// land at the bundle root regardless of source subdirectory.)
     var photo: NSImage? {
-        Bundle.module.url(forResource: photoResource, withExtension: photoExtension,
-                          subdirectory: "devices/knob")
-            .flatMap { NSImage(contentsOf: $0) }
+        let url = Bundle.module.url(forResource: photoResource,
+                                    withExtension: photoExtension)
+        if url == nil {
+            print("Device.photo: NO URL for \(photoResource).\(photoExtension)")
+            print("  Bundle.module.bundlePath = \(Bundle.module.bundlePath)")
+            print("  contents: \((try? FileManager.default.contentsOfDirectory(atPath: Bundle.module.bundlePath)) ?? [])")
+        }
+        guard let url, let img = NSImage(contentsOf: url) else { return nil }
+        return img
     }
 }
 

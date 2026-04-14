@@ -69,9 +69,11 @@ struct DetailView: View {
                     .padding(.bottom)
             } else {
                 DeviceView(device: .knob1, screenContent: screenImage)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Picker("View", selection: $showConsole) {
@@ -143,13 +145,13 @@ struct DetailView: View {
             let outURL = URL(fileURLWithPath: "/tmp/eleven-app-render-\(example.id.replacingOccurrences(of: "/", with: "_")).png")
             var env = ProcessInfo.processInfo.environment
             env["ELEVEN_APP_PATH"] = example.appPath.path
-            env["ELEVEN_GEOMETRY"] = "170x320"
+            env["ELEVEN_GEOMETRY"] = "100x310"
             env["ELEVEN_OUT"] = outURL.path
             env["ELEVEN_FRAMES"] = "1"
             env["ELEVEN_PRE_EVENTS"] = ""
             env["ELEVEN_CORE_DIR"] = Runtime.coreDir().path
             env["ELEVEN_REPO_ROOT"] = Runtime.repoRoot().path
-            env["ELEVEN_PLATFORM"] = "nomad-v1"
+            env["ELEVEN_PLATFORM"] = "knob-v1"
 
             // For RPC examples, inject a sample value so the render isn't blank
             if example.workerPath != nil {

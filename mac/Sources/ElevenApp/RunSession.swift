@@ -31,11 +31,11 @@ final class RunSession {
 
         var env = ProcessInfo.processInfo.environment
         env["ELEVEN_APP_PATH"] = example.appPath.path
-        env["ELEVEN_GEOMETRY"] = "170x320"
+        env["ELEVEN_GEOMETRY"] = "100x310"
         env["ELEVEN_TITLE"] = example.displayName
         env["ELEVEN_CORE_DIR"] = Runtime.coreDir().path
         env["ELEVEN_REPO_ROOT"] = Runtime.repoRoot().path
-        env["ELEVEN_PLATFORM"] = env["ELEVEN_PLATFORM"] ?? "nomad-v1"
+        env["ELEVEN_PLATFORM"] = env["ELEVEN_PLATFORM"] ?? "knob-v1"
 
         // Worker.py if this is a project-dir example
         if let worker = example.workerPath {

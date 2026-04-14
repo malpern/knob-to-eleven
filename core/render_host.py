@@ -2,7 +2,7 @@
 #
 # Env vars:
 #   ELEVEN_APP_PATH   absolute path to app.py
-#   ELEVEN_GEOMETRY   "WxH" (default 170x320)
+#   ELEVEN_GEOMETRY   "WxH" (default 100x310)
 #   ELEVEN_FRAMES     number of frames to advance (default 1)
 #   ELEVEN_FRAME_MS   ms per frame for tick_inc (default 16 for 60fps)
 #   ELEVEN_OUT        output PNG path (required)
@@ -27,9 +27,9 @@ OUT = os.getenv("ELEVEN_OUT") or die("ELEVEN_OUT not set")
 FRAMES = int(os.getenv("ELEVEN_FRAMES") or "1")
 FRAME_MS = int(os.getenv("ELEVEN_FRAME_MS") or "16")
 PRE = os.getenv("ELEVEN_PRE_EVENTS") or ""
-PLATFORM = os.getenv("ELEVEN_PLATFORM") or "nomad-v1"
+PLATFORM = os.getenv("ELEVEN_PLATFORM") or "knob-v1"
 
-geom = os.getenv("ELEVEN_GEOMETRY") or "170x320"
+geom = os.getenv("ELEVEN_GEOMETRY") or "100x310"
 W, H = (int(x) for x in geom.split("x"))
 
 _core = os.getenv("ELEVEN_CORE_DIR") or "."

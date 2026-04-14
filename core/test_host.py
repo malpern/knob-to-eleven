@@ -7,7 +7,7 @@
 #
 # Env vars:
 #   ELEVEN_TEST_SCRIPT   absolute path to test script
-#   ELEVEN_GEOMETRY      "WxH" (default "170x320")
+#   ELEVEN_GEOMETRY      "WxH" (default "100x310")
 #   ELEVEN_TEST_SHOW     if non-empty, show the SDL window during the run
 #   ELEVEN_CORE_DIR      where wlsdk.py + eleven_test.py live
 #   ELEVEN_PLATFORM      passed to wlsdk.sys.get_platform_name()
@@ -32,9 +32,9 @@ def parse_geom(s):
 
 
 TEST_SCRIPT = os.getenv("ELEVEN_TEST_SCRIPT") or die("ELEVEN_TEST_SCRIPT not set")
-WIDTH, HEIGHT = parse_geom(os.getenv("ELEVEN_GEOMETRY") or "170x320")
+WIDTH, HEIGHT = parse_geom(os.getenv("ELEVEN_GEOMETRY") or "100x310")
 SHOW = bool(os.getenv("ELEVEN_TEST_SHOW"))
-PLATFORM = os.getenv("ELEVEN_PLATFORM") or "nomad-v1"
+PLATFORM = os.getenv("ELEVEN_PLATFORM") or "knob-v1"
 
 _core_dir = os.getenv("ELEVEN_CORE_DIR") or "."
 if _core_dir not in sys.path:

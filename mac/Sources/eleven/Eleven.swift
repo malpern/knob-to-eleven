@@ -38,8 +38,8 @@ struct Run: AsyncParsableCommand {
     @Argument(help: "Path to app.py, or to a project directory containing app.py + optional worker.py")
     var path: String
 
-    @Option(name: .long, help: "Display geometry as WxH (default: 170x320)")
-    var geometry: String = "170x320"
+    @Option(name: .long, help: "Display geometry as WxH (default: 100x310)")
+    var geometry: String = "100x310"
 
     @Option(name: .long, help: "Window title (default: filename)")
     var title: String?
@@ -47,7 +47,7 @@ struct Run: AsyncParsableCommand {
     func run() async throws {
         let resolved = try AppLocation.resolve(path)
         guard let geom = GeometryOption.parse(geometry) else {
-            throw CLIError.generic("invalid --geometry \(geometry); expected WxH like 170x320")
+            throw CLIError.generic("invalid --geometry \(geometry); expected WxH like 100x310")
         }
         let micropython = try Runtime.micropythonBinary()
         let coreDir = Runtime.coreDir()
@@ -58,7 +58,7 @@ struct Run: AsyncParsableCommand {
         env["ELEVEN_TITLE"] = title ?? resolved.appPath.deletingPathExtension().lastPathComponent
         env["ELEVEN_CORE_DIR"] = coreDir.path
         env["ELEVEN_REPO_ROOT"] = Runtime.repoRoot().path
-        env["ELEVEN_PLATFORM"] = env["ELEVEN_PLATFORM"] ?? "nomad-v1"
+        env["ELEVEN_PLATFORM"] = env["ELEVEN_PLATFORM"] ?? "knob-v1"
 
         // If the project includes worker.py, spawn it on a TCP loopback port
         // and tell the host how to reach it.
@@ -101,8 +101,8 @@ struct Test: AsyncParsableCommand {
     @Argument(help: "Path to a test script")
     var path: String
 
-    @Option(name: .long, help: "Display geometry (default: 170x320)")
-    var geometry: String = "170x320"
+    @Option(name: .long, help: "Display geometry (default: 100x310)")
+    var geometry: String = "100x310"
 
     @Flag(name: .long, help: "Keep an SDL window visible during the test")
     var show: Bool = false
@@ -120,7 +120,7 @@ struct Test: AsyncParsableCommand {
         env["ELEVEN_GEOMETRY"] = geom.asString
         env["ELEVEN_CORE_DIR"] = coreDir.path
         env["ELEVEN_REPO_ROOT"] = Runtime.repoRoot().path
-        env["ELEVEN_PLATFORM"] = env["ELEVEN_PLATFORM"] ?? "nomad-v1"
+        env["ELEVEN_PLATFORM"] = env["ELEVEN_PLATFORM"] ?? "knob-v1"
         if show { env["ELEVEN_TEST_SHOW"] = "1" }
 
         let testHost = coreDir.appendingPathComponent("test_host.py")
@@ -145,8 +145,8 @@ struct Render: AsyncParsableCommand {
     @Option(name: .long, help: "Output PNG path (required)")
     var out: String
 
-    @Option(name: .long, help: "Display geometry (default: 170x320)")
-    var geometry: String = "170x320"
+    @Option(name: .long, help: "Display geometry (default: 100x310)")
+    var geometry: String = "100x310"
 
     @Option(name: .long, help: "Frames to advance before capturing (default: 1)")
     var frames: Int = 1
@@ -172,7 +172,7 @@ struct Render: AsyncParsableCommand {
         env["ELEVEN_PRE_EVENTS"] = events
         env["ELEVEN_CORE_DIR"] = coreDir.path
         env["ELEVEN_REPO_ROOT"] = Runtime.repoRoot().path
-        env["ELEVEN_PLATFORM"] = env["ELEVEN_PLATFORM"] ?? "nomad-v1"
+        env["ELEVEN_PLATFORM"] = env["ELEVEN_PLATFORM"] ?? "knob-v1"
 
         let renderHost = coreDir.appendingPathComponent("render_host.py")
         let status = try runForeground(micropython, arguments: [renderHost.path], environment: env)

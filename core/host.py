@@ -4,7 +4,7 @@
 #
 # Env vars (set by the `eleven` CLI):
 #   ELEVEN_APP_PATH       absolute path to user's app.py
-#   ELEVEN_GEOMETRY       "WxH" (default "170x320")
+#   ELEVEN_GEOMETRY       "WxH" (default "100x310")
 #   ELEVEN_TITLE          window title (default: basename of app)
 #   ELEVEN_PLATFORM       wlsdk.sys.get_platform_name() value
 #   ELEVEN_WORKER_PORT    optional TCP port (127.0.0.1) for worker.py bridge
@@ -25,13 +25,13 @@ def parse_geom(s):
         w, h = s.split("x")
         return int(w), int(h)
     except Exception:
-        die("invalid geometry " + repr(s) + " (expected WxH like 170x320)")
+        die("invalid geometry " + repr(s) + " (expected WxH like 100x310)")
 
 
 APP_PATH = os.getenv("ELEVEN_APP_PATH") or die("ELEVEN_APP_PATH not set")
-WIDTH, HEIGHT = parse_geom(os.getenv("ELEVEN_GEOMETRY") or "170x320")
+WIDTH, HEIGHT = parse_geom(os.getenv("ELEVEN_GEOMETRY") or "100x310")
 TITLE = os.getenv("ELEVEN_TITLE") or "eleven"
-PLATFORM = os.getenv("ELEVEN_PLATFORM") or "nomad-v1"
+PLATFORM = os.getenv("ELEVEN_PLATFORM") or "knob-v1"
 
 
 # --- Make `wlsdk` importable (lives next to this file) ---

@@ -13,12 +13,12 @@ import lvgl as lv
 # --- internal state set by host ---
 _state = {
     "lv_root": None,
-    "platform": "nomad-v1",
+    "platform": "knob-v1",
     "rpc_notify_cb": None,  # host sets this to forward notifications to worker.py
 }
 
 
-def _init(lv_root_obj, platform="nomad-v1", rpc_notify_cb=None):
+def _init(lv_root_obj, platform="knob-v1", rpc_notify_cb=None):
     _state["lv_root"] = lv_root_obj
     _state["platform"] = platform
     _state["rpc_notify_cb"] = rpc_notify_cb
