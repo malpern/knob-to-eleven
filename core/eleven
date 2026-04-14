@@ -17,11 +17,19 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 usage() {
     cat <<EOF
-Usage: eleven run <app.py> [--geometry WxH] [--title "Window title"]
+Usage:
+  eleven run  <app.py>   [--geometry WxH] [--title "..."]
+  eleven test <test.py>  [--geometry WxH] [--show]
+
+Commands:
+  run   Launch an app in an SDL window (interactive dev loop).
+  test  Run an automated test script headlessly. With --show, keep the
+        SDL window visible so you can watch the test drive the app.
 
 Options:
   --geometry WxH   display size in pixels (default 170x320)
   --title TITLE    window title (default: filename)
+  --show           test: keep the window visible during the run
 
 Env vars:
   ELEVEN_MICROPYTHON  path to micropython binary (default: built locally)
@@ -30,7 +38,8 @@ EOF
 
 cmd="${1:-}"
 case "$cmd" in
-    run)
+    run|test)
+        SUBCMD="$cmd"
         shift
         ;;
     -h|--help|help|"")
@@ -44,24 +53,26 @@ case "$cmd" in
         ;;
 esac
 
-APP="${1:-}"
-if [[ -z "$APP" ]]; then
-    echo "eleven: missing <app.py>" >&2
+SCRIPT_ARG="${1:-}"
+if [[ -z "$SCRIPT_ARG" ]]; then
+    echo "eleven: missing file" >&2
     usage
     exit 1
 fi
-if [[ ! -f "$APP" ]]; then
-    echo "eleven: $APP not found" >&2
+if [[ ! -f "$SCRIPT_ARG" ]]; then
+    echo "eleven: $SCRIPT_ARG not found" >&2
     exit 1
 fi
 shift
 
 GEOMETRY="170x320"
-TITLE="$(basename "$APP" .py)"
+TITLE="$(basename "$SCRIPT_ARG" .py)"
+SHOW=""
 while (($#)); do
     case "$1" in
         --geometry) GEOMETRY="$2"; shift 2 ;;
         --title)    TITLE="$2";    shift 2 ;;
+        --show)     SHOW="1";      shift ;;
         *) echo "eleven: unknown option '$1'" >&2; usage; exit 1 ;;
     esac
 done
@@ -72,10 +83,17 @@ if [[ ! -x "$ELEVEN_MICROPYTHON" ]]; then
     exit 1
 fi
 
-export ELEVEN_APP_PATH="$(cd "$(dirname "$APP")" && pwd)/$(basename "$APP")"
+ABS_PATH="$(cd "$(dirname "$SCRIPT_ARG")" && pwd)/$(basename "$SCRIPT_ARG")"
 export ELEVEN_GEOMETRY="$GEOMETRY"
 export ELEVEN_TITLE="$TITLE"
 export ELEVEN_CORE_DIR="$REPO_ROOT/core"
 export ELEVEN_PLATFORM="${ELEVEN_PLATFORM:-nomad-v1}"
 
-exec "$ELEVEN_MICROPYTHON" "$REPO_ROOT/core/host.py"
+if [[ "$SUBCMD" == "run" ]]; then
+    export ELEVEN_APP_PATH="$ABS_PATH"
+    exec "$ELEVEN_MICROPYTHON" "$REPO_ROOT/core/host.py"
+else
+    export ELEVEN_TEST_SCRIPT="$ABS_PATH"
+    [[ -n "$SHOW" ]] && export ELEVEN_TEST_SHOW=1
+    exec "$ELEVEN_MICROPYTHON" "$REPO_ROOT/core/test_host.py"
+fi

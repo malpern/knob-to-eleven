@@ -44,14 +44,95 @@ lv.init()
 disp = lv.sdl_window_create(WIDTH, HEIGHT)
 lv.sdl_window_set_title(disp, TITLE)
 lv.sdl_mouse_create()
-lv.sdl_keyboard_create()
+kb_indev = lv.sdl_keyboard_create()
+wheel_indev = lv.sdl_mousewheel_create()
 
 lv_root = lv.screen_active()
-
 
 # --- Wire wlsdk ---
 import wlsdk
 wlsdk._init(lv_root, platform=PLATFORM)
+
+
+# --- Input: forward keyboard + wheel events as SDK on_event(type, idx, val) ---
+# Keyboard mapping:
+#   Enter / Space       -> BUTTON index 0
+#   "1"..."9"           -> BUTTON index 1..9  (for multi-button devices)
+#   Left  / Mouse wheel down -> ENCODER index 0, ENCODER_LEFT  (-1)
+#   Right / Mouse wheel up   -> ENCODER index 0, ENCODER_RIGHT (+1)
+#
+# LVGL delivers key events through the indev's group. We install a group,
+# focus lv_root, and forward EVENT.KEY / EVENT.CLICKED on lv_root.
+
+_indev_group = lv.group_create()
+kb_indev.set_group(_indev_group)
+wheel_indev.set_group(_indev_group)
+
+
+def _deliver_on_event(etype, idx, val):
+    """Call user's on_event if defined; swallow exceptions so one bad
+    handler doesn't take down the window."""
+    app_ns = _current_app.get("ns")
+    if not app_ns:
+        return
+    fn = app_ns.get("on_event")
+    if not callable(fn):
+        return
+    try:
+        fn(etype, idx, val)
+    except Exception as e:
+        print("eleven: on_event raised: " + str(e))
+        try:
+            sys.print_exception(e)
+        except Exception:
+            pass
+
+
+_BTN_KEYS = {
+    lv.KEY.ENTER: 0,
+    ord(" "): 0,
+    ord("1"): 1, ord("2"): 2, ord("3"): 3, ord("4"): 4, ord("5"): 5,
+    ord("6"): 6, ord("7"): 7, ord("8"): 8, ord("9"): 9,
+}
+
+
+def _key_event_cb(e):
+    code = e.get_code()
+    indev = lv.indev_active()
+    if indev is None:
+        return
+
+    # LVGL's keypad indev emits KEY events with the numeric key code.
+    # The encoder (mousewheel) also uses this indev family but reports
+    # KEY.NEXT / KEY.PREV for +/-.
+    if code == lv.EVENT.KEY:
+        key = indev.get_key()
+        if key == lv.KEY.RIGHT or key == lv.KEY.NEXT:
+            _deliver_on_event(wlsdk.EVENT.ENCODER, 0, wlsdk.EVENT.ENCODER_RIGHT)
+        elif key == lv.KEY.LEFT or key == lv.KEY.PREV:
+            _deliver_on_event(wlsdk.EVENT.ENCODER, 0, wlsdk.EVENT.ENCODER_LEFT)
+        elif key in _BTN_KEYS:
+            _deliver_on_event(wlsdk.EVENT.BUTTON, _BTN_KEYS[key], wlsdk.EVENT.BUTTON_DOWN)
+    elif code == lv.EVENT.RELEASED:
+        key = indev.get_key()
+        if key in _BTN_KEYS:
+            _deliver_on_event(wlsdk.EVENT.BUTTON, _BTN_KEYS[key], wlsdk.EVENT.BUTTON_UP)
+
+
+# Shared handle so _key_event_cb can reach the live app namespace even
+# across hot reloads.
+_current_app = {"ns": None}
+
+# Input sink lives on the top layer, which survives screen cleans during
+# hot reload.
+_top = lv.layer_top()
+_input_sink = lv.obj(_top)
+_input_sink.set_size(1, 1)
+_input_sink.set_style_bg_opa(0, 0)
+_input_sink.set_style_border_width(0, 0)
+_input_sink.add_event_cb(_key_event_cb, lv.EVENT.ALL, None)
+# First add_obj auto-focuses the object
+_indev_group.add_obj(_input_sink)
 
 
 # --- File-mtime tracking for hot reload ---
@@ -118,9 +199,11 @@ RELOAD_DEBOUNCE_MS = 2000  # match device firmware behavior
 def run():
     print("eleven: loading " + APP_PATH)
     ns = load_app()
+    _current_app["ns"] = ns
     if callable(ns.get("start")):
         if not safe_call(ns["start"]):
-            ns = None  # halt update per SDK semantics
+            ns = None
+            _current_app["ns"] = None
     current_mtime = file_mtime(APP_PATH)
     change_seen_ms = 0
 
@@ -139,16 +222,18 @@ def run():
             if change_seen_ms == 0:
                 change_seen_ms = now
             elif time.ticks_diff(now, change_seen_ms) >= RELOAD_DEBOUNCE_MS:
-                # debounce elapsed — reload
                 print("eleven: reloading (mtime changed)")
                 teardown(ns)
+                _current_app["ns"] = None
                 current_mtime = mt
                 change_seen_ms = 0
                 try:
                     ns = load_app()
+                    _current_app["ns"] = ns
                     if callable(ns.get("start")):
                         if not safe_call(ns["start"]):
                             ns = None
+                            _current_app["ns"] = None
                 except Exception as e:
                     print("eleven: load failed: " + str(e))
                     try:
@@ -156,6 +241,7 @@ def run():
                     except Exception:
                         pass
                     ns = None
+                    _current_app["ns"] = None
         else:
             change_seen_ms = 0
 
