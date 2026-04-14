@@ -1,4 +1,4 @@
-# eleven
+# knob-to-eleven
 
 Build apps that go to eleven.
 
@@ -6,6 +6,8 @@ A host-side runtime and developer tool for writing custom apps for
 [Work Louder](https://worklouder.cc) devices — the k·no·b·1 and Nomad E —
 using their MicroPython + LVGL SDK. Write your `app.py`, see it rendered in
 a pixel-accurate preview window instantly, no device required.
+
+The CLI is named `eleven`. The repo is `knob-to-eleven`.
 
 **Status:** early. Not yet usable. See `docs/` for plans and progress.
 

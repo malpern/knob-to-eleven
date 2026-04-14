@@ -1,7 +1,7 @@
 # Test for examples/hello.py — verifies the time-driven animation progresses.
 import eleven_test as t
 
-t.load_app("/Users/malpern/local-code/eleven/examples/hello.py")
+t.load_app(t.example("hello.py"))
 
 # Initial label shows "0%"
 initial = t.find_label_text()

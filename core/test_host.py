@@ -64,7 +64,7 @@ import wlsdk
 wlsdk._init(lv_root, platform=PLATFORM)
 
 import eleven_test
-eleven_test._install(lv_root, wlsdk, lv)
+eleven_test._install(lv_root, wlsdk, lv, root=os.getenv("ELEVEN_REPO_ROOT") or "")
 
 
 # --- Run the test script ---

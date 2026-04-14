@@ -24,11 +24,23 @@ _state = {
 }
 _failed = 0
 
+# Repo root, set by test_host.py from the ELEVEN_REPO_ROOT env var.
+# Tests reference paths relative to this rather than hardcoding absolute
+# paths. See `example()` below for the common case.
+repo_root = ""
 
-def _install(lv_root, wlsdk, lv_mod):
+
+def _install(lv_root, wlsdk, lv_mod, root=""):
     _state["lv_root"] = lv_root
     _state["wlsdk"] = wlsdk
     _state["lv"] = lv_mod
+    global repo_root
+    repo_root = root
+
+
+def example(name):
+    """Convenience: absolute path to examples/<name>."""
+    return repo_root + "/examples/" + name
 
 
 # --- App lifecycle ---

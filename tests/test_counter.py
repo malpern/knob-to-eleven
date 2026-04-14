@@ -6,8 +6,7 @@
 
 import eleven_test as t
 
-REPO_ROOT = "/Users/malpern/local-code/eleven"
-t.load_app(REPO_ROOT + "/examples/counter.py")
+t.load_app(t.example("counter.py"))
 
 # After start(), counter should render 0
 assert t.find_label_text() == "0", \

@@ -87,6 +87,7 @@ ABS_PATH="$(cd "$(dirname "$SCRIPT_ARG")" && pwd)/$(basename "$SCRIPT_ARG")"
 export ELEVEN_GEOMETRY="$GEOMETRY"
 export ELEVEN_TITLE="$TITLE"
 export ELEVEN_CORE_DIR="$REPO_ROOT/core"
+export ELEVEN_REPO_ROOT="$REPO_ROOT"
 export ELEVEN_PLATFORM="${ELEVEN_PLATFORM:-nomad-v1}"
 
 if [[ "$SUBCMD" == "run" ]]; then
