@@ -115,7 +115,7 @@ def bar(parent, value=0, value_range=(0, 100),
     b = lv.bar(parent)
     b.set_size(width, height)
     b.set_range(value_range[0], value_range[1])
-    b.set_value(value, lv.ANIM.OFF)
+    b.set_value(value, False)  # anim_enable=False
     b.set_style_bg_color(_resolve_color(track, theme.dim), 0)
     b.set_style_bg_color(_resolve_color(color, theme.accent), lv.PART.INDICATOR)
     b.set_style_radius(2, 0)
