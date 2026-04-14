@@ -3,10 +3,11 @@
 # hooks, and hot-reloads when the file changes.
 #
 # Env vars (set by the `eleven` CLI):
-#   ELEVEN_APP_PATH   absolute path to user's app.py
-#   ELEVEN_GEOMETRY   "WxH" (default "170x320")
-#   ELEVEN_TITLE      window title (default: basename of app)
-#   ELEVEN_PLATFORM   wlsdk.sys.get_platform_name() value (default "nomad-v1")
+#   ELEVEN_APP_PATH       absolute path to user's app.py
+#   ELEVEN_GEOMETRY       "WxH" (default "170x320")
+#   ELEVEN_TITLE          window title (default: basename of app)
+#   ELEVEN_PLATFORM       wlsdk.sys.get_platform_name() value
+#   ELEVEN_WORKER_PORT    optional TCP port (127.0.0.1) for worker.py bridge
 
 import os
 import sys
@@ -52,6 +53,106 @@ lv_root = lv.screen_active()
 # --- Wire wlsdk ---
 import wlsdk
 wlsdk._init(lv_root, platform=PLATFORM)
+
+
+# --- RPC bridge to worker.py over TCP loopback ---
+WORKER_PORT = int(os.getenv("ELEVEN_WORKER_PORT") or "0")
+_worker_sock = None
+_worker_buf = b""
+_worker_notify_subs = set()  # methods the worker has subscribed to
+
+if WORKER_PORT:
+    import socket as _socket
+    import json as _json
+
+    def _connect_worker(port, attempts=60, delay_ms=100):
+        # Worker has to do a Python cold start + bind the port; be
+        # generous (60 * 100ms = 6s) before giving up.
+        # MicroPython's socket.connect needs a getaddrinfo-derived
+        # binary address (not a (host, port) tuple).
+        addr = _socket.getaddrinfo("127.0.0.1", port)[0][-1]
+        for _ in range(attempts):
+            s = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+            try:
+                s.connect(addr)
+                s.setblocking(False)
+                return s
+            except Exception:
+                try: s.close()
+                except Exception: pass
+                time.sleep_ms(delay_ms)
+        return None
+
+    _worker_sock = _connect_worker(WORKER_PORT)
+    if _worker_sock:
+        print("eleven: worker connected on port " + str(WORKER_PORT))
+    else:
+        print("eleven: WARN worker did not become reachable on port " + str(WORKER_PORT))
+
+    def _worker_send(obj):
+        if _worker_sock is None:
+            return
+        try:
+            line = (_json.dumps(obj) + "\n").encode("utf-8")
+            _worker_sock.send(line)
+        except Exception as e:
+            print("eleven: worker send failed: " + str(e))
+
+    def _wlsdk_notify_to_worker(method, payload):
+        # method already prefixed with wlsdk. by wlsdk.rpc.send_notify
+        _worker_send({"type": "notify", "method": method, "params": payload})
+
+    wlsdk._state["rpc_notify_cb"] = _wlsdk_notify_to_worker
+
+    def _pump_worker():
+        """Drain any inbound bytes from the worker, dispatch full lines.
+        Socket is non-blocking; recv raises OSError(EAGAIN) when empty."""
+        global _worker_buf
+        if _worker_sock is None:
+            return
+        # Drain whatever's available right now without blocking.
+        try:
+            chunk = _worker_sock.recv(4096)
+        except Exception:
+            # No data ready (EAGAIN) or other transient error
+            return
+        if not chunk:
+            return
+        _worker_buf += chunk
+        while b"\n" in _worker_buf:
+            line, _worker_buf = _worker_buf.split(b"\n", 1)
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                msg = _json.loads(line.decode("utf-8"))
+            except Exception:
+                print("eleven: bad JSON from worker")
+                continue
+            t = msg.get("type")
+            if t == "log":
+                print("worker: " + str(msg.get("msg", "")))
+            elif t == "register_notify":
+                _worker_notify_subs.add(msg.get("method", ""))
+            elif t == "send_rpc":
+                # Dispatch to a wlsdk.rpc.register'd handler on device side
+                method = msg.get("method", "")
+                params = msg.get("params")
+                handler = wlsdk._RPCState._handlers.get(
+                    method[len("wlsdk."):] if method.startswith("wlsdk.") else method
+                )
+                if handler is None:
+                    # Try with full method name as a fallback
+                    handler = wlsdk._RPCState._handlers.get(method)
+                if handler is not None:
+                    try:
+                        # ctx is opaque per the SDK API; we pass None for now
+                        handler(None, params)
+                    except Exception as e:
+                        print("eleven: rpc handler {} raised: {}".format(method, e))
+else:
+    def _pump_worker():
+        pass
 
 
 # --- Input: forward keyboard + wheel events as SDK on_event(type, idx, val) ---
@@ -244,6 +345,9 @@ def run():
                     _current_app["ns"] = None
         else:
             change_seen_ms = 0
+
+        # Pump worker.py messages (no-op if no worker)
+        _pump_worker()
 
         wlsdk._Time._advance(now)
         lv.tick_inc(dt)

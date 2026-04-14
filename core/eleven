@@ -64,11 +64,26 @@ esac
 
 SCRIPT_ARG="${1:-}"
 if [[ -z "$SCRIPT_ARG" ]]; then
-    echo "eleven: missing file" >&2
+    echo "eleven: missing file or directory" >&2
     usage
     exit 1
 fi
-if [[ ! -f "$SCRIPT_ARG" ]]; then
+
+# Accept either:
+#   eleven run examples/foo.py        — single-file app, no worker
+#   eleven run examples/foo/          — project dir with app.py + worker.py
+WORKER_PATH=""
+if [[ -d "$SCRIPT_ARG" ]]; then
+    PROJECT_DIR="$(cd "$SCRIPT_ARG" && pwd)"
+    if [[ ! -f "$PROJECT_DIR/app.py" ]]; then
+        echo "eleven: $SCRIPT_ARG is a directory but contains no app.py" >&2
+        exit 1
+    fi
+    SCRIPT_ARG="$PROJECT_DIR/app.py"
+    if [[ -f "$PROJECT_DIR/worker.py" ]]; then
+        WORKER_PATH="$PROJECT_DIR/worker.py"
+    fi
+elif [[ ! -f "$SCRIPT_ARG" ]]; then
     echo "eleven: $SCRIPT_ARG not found" >&2
     exit 1
 fi
@@ -108,7 +123,22 @@ export ELEVEN_PLATFORM="${ELEVEN_PLATFORM:-nomad-v1}"
 case "$SUBCMD" in
     run)
         export ELEVEN_APP_PATH="$ABS_PATH"
-        exec "$ELEVEN_MICROPYTHON" "$REPO_ROOT/core/host.py"
+        if [[ -n "$WORKER_PATH" ]]; then
+            # Spawn worker.py as a subprocess; bridge over TCP loopback.
+            # Pick a free ephemeral port via a tiny Python one-liner.
+            WORKER_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')"
+            WORKER_LOG="/tmp/eleven-worker-$$.log"
+            export ELEVEN_WORKER_PORT="$WORKER_PORT"
+            python3 "$REPO_ROOT/core/worker_runner.py" "$WORKER_PATH" "$WORKER_PORT" \
+                > "$WORKER_LOG" 2>&1 &
+            WORKER_PID=$!
+            cleanup() {
+                [[ -n "${WORKER_PID:-}" ]] && kill "$WORKER_PID" 2>/dev/null
+            }
+            trap cleanup EXIT INT TERM
+            echo "eleven: worker pid=$WORKER_PID port=$WORKER_PORT log=$WORKER_LOG"
+        fi
+        "$ELEVEN_MICROPYTHON" "$REPO_ROOT/core/host.py"
         ;;
     test)
         export ELEVEN_TEST_SCRIPT="$ABS_PATH"
