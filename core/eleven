@@ -1,0 +1,81 @@
+#!/bin/bash
+# eleven — run a Work Louder SDK app on the host
+#
+# Usage: eleven run <app.py> [--geometry WxH] [--title "..."]
+#
+# Currently delegates to a pinned lv_micropython Unix build. Once the Swift
+# shell lands, this CLI will call into the core library instead.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Path to the MicroPython binary built with LVGL + SDL support.
+# Override with ELEVEN_MICROPYTHON env var.
+: "${ELEVEN_MICROPYTHON:=/Users/malpern/local-code/worklouder/spikes/lvgl-mpy-macos/lv_micropython/ports/unix/build-lvgl/micropython}"
+
+usage() {
+    cat <<EOF
+Usage: eleven run <app.py> [--geometry WxH] [--title "Window title"]
+
+Options:
+  --geometry WxH   display size in pixels (default 170x320)
+  --title TITLE    window title (default: filename)
+
+Env vars:
+  ELEVEN_MICROPYTHON  path to micropython binary (default: built locally)
+EOF
+}
+
+cmd="${1:-}"
+case "$cmd" in
+    run)
+        shift
+        ;;
+    -h|--help|help|"")
+        usage
+        exit 0
+        ;;
+    *)
+        echo "eleven: unknown command '$cmd'" >&2
+        usage
+        exit 1
+        ;;
+esac
+
+APP="${1:-}"
+if [[ -z "$APP" ]]; then
+    echo "eleven: missing <app.py>" >&2
+    usage
+    exit 1
+fi
+if [[ ! -f "$APP" ]]; then
+    echo "eleven: $APP not found" >&2
+    exit 1
+fi
+shift
+
+GEOMETRY="170x320"
+TITLE="$(basename "$APP" .py)"
+while (($#)); do
+    case "$1" in
+        --geometry) GEOMETRY="$2"; shift 2 ;;
+        --title)    TITLE="$2";    shift 2 ;;
+        *) echo "eleven: unknown option '$1'" >&2; usage; exit 1 ;;
+    esac
+done
+
+if [[ ! -x "$ELEVEN_MICROPYTHON" ]]; then
+    echo "eleven: micropython binary not found at $ELEVEN_MICROPYTHON" >&2
+    echo "        build it first or set ELEVEN_MICROPYTHON" >&2
+    exit 1
+fi
+
+export ELEVEN_APP_PATH="$(cd "$(dirname "$APP")" && pwd)/$(basename "$APP")"
+export ELEVEN_GEOMETRY="$GEOMETRY"
+export ELEVEN_TITLE="$TITLE"
+export ELEVEN_CORE_DIR="$REPO_ROOT/core"
+export ELEVEN_PLATFORM="${ELEVEN_PLATFORM:-nomad-v1}"
+
+exec "$ELEVEN_MICROPYTHON" "$REPO_ROOT/core/host.py"

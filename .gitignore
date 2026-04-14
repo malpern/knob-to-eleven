@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+*.swp
+
+# Swift / Xcode
+.build/
+.swiftpm/
+Package.resolved
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+xcuserdata/
+
+# C / MicroPython / LVGL build artifacts
+build/
+build-*/
+*.o
+*.a
+*.dylib
+*.so
+*.d
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node (for any tooling)
+node_modules/
+dist/
+
+# Local notes
+scratch/
+TODO.local.md
+
+# Logs, tempfiles
+*.log
+*.tmp
