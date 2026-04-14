@@ -11,10 +11,20 @@ fail=0
 pass=0
 failed_names=()
 
-for test in "$SCRIPT_DIR"/test_*.py; do
-    name="$(basename "$test" .py)"
+run_one() {
+    local test="$1"
+    local name="$(basename "$test" .py)"
     printf "• %-30s " "$name"
-    if output=$("$ELEVEN" test "$test" 2>&1); then
+    # Tests with a python3 shebang on line 1 run as CPython (they shell
+    # out to `eleven` themselves). Everything else runs through `eleven
+    # test` (MicroPython driving an app via the test host).
+    local output
+    if head -n1 "$test" | grep -q "python3"; then
+        output=$(python3 "$test" 2>&1)
+    else
+        output=$("$ELEVEN" test "$test" 2>&1)
+    fi
+    if [[ $? -eq 0 ]]; then
         echo "PASS"
         pass=$((pass+1))
     else
@@ -23,6 +33,10 @@ for test in "$SCRIPT_DIR"/test_*.py; do
         fail=$((fail+1))
         failed_names+=("$name")
     fi
+}
+
+for test in "$SCRIPT_DIR"/test_*.py; do
+    run_one "$test"
 done
 
 echo

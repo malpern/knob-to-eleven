@@ -47,9 +47,8 @@ if SHOW:
     disp = lv.sdl_window_create(WIDTH, HEIGHT)
     lv.sdl_window_set_title(disp, "eleven test")
 else:
-    # Headless buffer-backed display
-    buf_size = WIDTH * HEIGHT * 4  # assume 32-bit color
-    _disp_buf = bytearray(buf_size)
+    # Headless buffer-backed display (RGB565 native = 2 bytes/pixel)
+    _disp_buf = bytearray(WIDTH * HEIGHT * 2)
     disp = lv.display_create(WIDTH, HEIGHT)
     disp.set_buffers(_disp_buf, None, len(_disp_buf), lv.DISPLAY_RENDER_MODE.DIRECT)
 

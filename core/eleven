@@ -18,18 +18,27 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 usage() {
     cat <<EOF
 Usage:
-  eleven run  <app.py>   [--geometry WxH] [--title "..."]
-  eleven test <test.py>  [--geometry WxH] [--show]
+  eleven run    <app.py>   [--geometry WxH] [--title "..."]
+  eleven test   <test.py>  [--geometry WxH] [--show]
+  eleven render <app.py>   --out file.png [--geometry WxH] [--frames N]
+                           [--events "encoder:+3,button:0,step:30"]
 
 Commands:
-  run   Launch an app in an SDL window (interactive dev loop).
-  test  Run an automated test script headlessly. With --show, keep the
-        SDL window visible so you can watch the test drive the app.
+  run     Launch an app in an SDL window (interactive dev loop).
+  test    Run an automated test script headlessly. --show keeps the SDL
+          window visible during the run.
+  render  Render the app headlessly to a PNG. Useful for visual
+          regression tests, README screenshots, and LLM self-checks.
 
 Options:
   --geometry WxH   display size in pixels (default 170x320)
   --title TITLE    window title (default: filename)
   --show           test: keep the window visible during the run
+  --out PATH       render: output PNG path (required)
+  --frames N       render: advance N frames before capture (default 1)
+  --events SPEC    render: comma-separated synthetic events to inject
+                   between layout and capture, e.g.
+                   "encoder:+3,button:0,step:30"
 
 Env vars:
   ELEVEN_MICROPYTHON  path to micropython binary (default: built locally)
@@ -38,7 +47,7 @@ EOF
 
 cmd="${1:-}"
 case "$cmd" in
-    run|test)
+    run|test|render)
         SUBCMD="$cmd"
         shift
         ;;
@@ -68,11 +77,17 @@ shift
 GEOMETRY="170x320"
 TITLE="$(basename "$SCRIPT_ARG" .py)"
 SHOW=""
+OUT=""
+FRAMES="1"
+EVENTS=""
 while (($#)); do
     case "$1" in
         --geometry) GEOMETRY="$2"; shift 2 ;;
         --title)    TITLE="$2";    shift 2 ;;
         --show)     SHOW="1";      shift ;;
+        --out)      OUT="$2";      shift 2 ;;
+        --frames)   FRAMES="$2";   shift 2 ;;
+        --events)   EVENTS="$2";   shift 2 ;;
         *) echo "eleven: unknown option '$1'" >&2; usage; exit 1 ;;
     esac
 done
@@ -90,11 +105,36 @@ export ELEVEN_CORE_DIR="$REPO_ROOT/core"
 export ELEVEN_REPO_ROOT="$REPO_ROOT"
 export ELEVEN_PLATFORM="${ELEVEN_PLATFORM:-nomad-v1}"
 
-if [[ "$SUBCMD" == "run" ]]; then
-    export ELEVEN_APP_PATH="$ABS_PATH"
-    exec "$ELEVEN_MICROPYTHON" "$REPO_ROOT/core/host.py"
-else
-    export ELEVEN_TEST_SCRIPT="$ABS_PATH"
-    [[ -n "$SHOW" ]] && export ELEVEN_TEST_SHOW=1
-    exec "$ELEVEN_MICROPYTHON" "$REPO_ROOT/core/test_host.py"
-fi
+case "$SUBCMD" in
+    run)
+        export ELEVEN_APP_PATH="$ABS_PATH"
+        exec "$ELEVEN_MICROPYTHON" "$REPO_ROOT/core/host.py"
+        ;;
+    test)
+        export ELEVEN_TEST_SCRIPT="$ABS_PATH"
+        [[ -n "$SHOW" ]] && export ELEVEN_TEST_SHOW=1
+        exec "$ELEVEN_MICROPYTHON" "$REPO_ROOT/core/test_host.py"
+        ;;
+    render)
+        if [[ -z "$OUT" ]]; then
+            echo "eleven render: --out is required" >&2
+            exit 1
+        fi
+        # Resolve output to absolute path so it lands where the user expects
+        OUT_DIR="$(cd "$(dirname "$OUT")" 2>/dev/null && pwd)" || \
+            { echo "eleven render: output dir not found: $(dirname "$OUT")" >&2; exit 1; }
+        OUT_ABS="$OUT_DIR/$(basename "$OUT")"
+        export ELEVEN_APP_PATH="$ABS_PATH"
+        export ELEVEN_OUT="$OUT_ABS"
+        export ELEVEN_FRAMES="$FRAMES"
+        export ELEVEN_PRE_EVENTS="$EVENTS"
+        "$ELEVEN_MICROPYTHON" "$REPO_ROOT/core/render_host.py" || exit $?
+        # Convert PPM to PNG via macOS sips
+        if ! sips -s format png "$OUT_ABS.ppm" --out "$OUT_ABS" >/dev/null 2>&1; then
+            echo "eleven render: sips failed (PPM written at $OUT_ABS.ppm)" >&2
+            exit 1
+        fi
+        rm -f "$OUT_ABS.ppm"
+        echo "wrote $OUT_ABS"
+        ;;
+esac
