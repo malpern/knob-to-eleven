@@ -20,6 +20,11 @@ build-*/
 *.so
 *.d
 
+# Bootstrap-cloned vendor source tree (lv_micropython + submodules ~2.7GB).
+# Build with bin/bootstrap.sh on each fresh clone.
+lib/
+bin/micropython
+
 # Python
 __pycache__/
 *.pyc

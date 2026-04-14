@@ -9,7 +9,28 @@ a pixel-accurate preview window instantly, no device required.
 
 The CLI is named `eleven`. The repo is `knob-to-eleven`.
 
-**Status:** early. Not yet usable. See `docs/` for plans and progress.
+**Status:** early but usable. Renders apps, hot-reloads, RPC bridges to
+host data, autonomous test harness. No SwiftUI app yet — just a CLI.
+
+---
+
+## Quick start
+
+Requires macOS, Xcode Command Line Tools, Swift, Homebrew with `sdl2`,
+`pkg-config`, `cmake`, `python3`, and `openjdk` (any of 17/21/25).
+
+```bash
+git clone <this-repo>
+cd knob-to-eleven
+bin/bootstrap.sh                   # ~5 min first time, ~2s thereafter
+mac/.build/debug/eleven run examples/hello.py
+mac/.build/debug/eleven run examples/cpu/    # live macOS CPU on the dial
+tests/run_all.sh                   # 6 tests, all should pass
+```
+
+The bootstrap script clones lv_micropython into `lib/`, builds it with
+the LVGL+SDL variant, builds the Swift CLI. Both outputs are gitignored;
+you rebuild on each fresh clone.
 
 ---
 
