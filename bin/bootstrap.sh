@@ -72,12 +72,117 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 3.5. Configure extra fonts for the simulator
+#
+# Stock lv_micropython enables only a handful of Montserrat sizes and no
+# bold variant. Our widgets (the clock especially) want Montserrat 12
+# for small labels and Montserrat-Bold 24 for time values. Both are
+# stock LVGL fonts; we just have to enable / generate them.
+#
+# This step is idempotent: it inspects the relevant files and only
+# patches them when they don't already have what we need. If anything
+# is patched, the unix port is rebuilt below to pick up the new fonts.
+
+LV_BIND_DIR="$LV_DIR/user_modules/lv_binding_micropython"
+LV_CONF_H="$LV_BIND_DIR/lv_conf.h"
+LV_FONT_DIR="$LV_BIND_DIR/lvgl/src/font"
+LV_FONT_H="$LV_FONT_DIR/lv_font.h"
+BOLD_TTF="$LV_BIND_DIR/lvgl/tests/src/test_files/fonts/Montserrat-Bold.ttf"
+BOLD_C="$LV_FONT_DIR/lv_font_montserrat_bold_24.c"
+
+FONTS_CHANGED=0
+
+step "Configuring extra simulator fonts"
+
+# (a) Enable LV_FONT_MONTSERRAT_12 in lv_conf.h.
+if grep -q '^#define LV_FONT_MONTSERRAT_12 1' "$LV_CONF_H"; then
+    ok "Montserrat 12 already enabled"
+else
+    sed -i.bak 's|^#define LV_FONT_MONTSERRAT_12 .*|#define LV_FONT_MONTSERRAT_12 1|' "$LV_CONF_H"
+    rm -f "$LV_CONF_H.bak"
+    FONTS_CHANGED=1
+    ok "enabled LV_FONT_MONTSERRAT_12"
+fi
+
+# (b) Add the LV_FONT_MONTSERRAT_BOLD_24 define if missing. We append
+#     it after the MONTSERRAT_48 line so it groups with the other size
+#     defines.
+if grep -q 'LV_FONT_MONTSERRAT_BOLD_24' "$LV_CONF_H"; then
+    ok "Montserrat-Bold 24 define already present"
+else
+    awk '
+        { print }
+        /^#define LV_FONT_MONTSERRAT_48 / && !done {
+            print ""
+            print "/* Custom Montserrat-Bold 24 — generated via lv_font_conv. */"
+            print "#define LV_FONT_MONTSERRAT_BOLD_24 1"
+            done = 1
+        }
+    ' "$LV_CONF_H" > "$LV_CONF_H.tmp" && mv "$LV_CONF_H.tmp" "$LV_CONF_H"
+    FONTS_CHANGED=1
+    ok "added LV_FONT_MONTSERRAT_BOLD_24 define"
+fi
+
+# (c) Add the LV_FONT_DECLARE so MicroPython's binding generator picks
+#     up the new font symbol.
+if grep -q 'LV_FONT_DECLARE(lv_font_montserrat_bold_24)' "$LV_FONT_H"; then
+    ok "Montserrat-Bold 24 declared in lv_font.h"
+else
+    awk '
+        { print }
+        /^LV_FONT_DECLARE\(lv_font_montserrat_28_compressed\)/ && !done {
+            getline next_line
+            print next_line       # the closing #endif
+            print ""
+            print "#if LV_FONT_MONTSERRAT_BOLD_24"
+            print "LV_FONT_DECLARE(lv_font_montserrat_bold_24)"
+            print "#endif"
+            done = 1
+        }
+    ' "$LV_FONT_H" > "$LV_FONT_H.tmp" && mv "$LV_FONT_H.tmp" "$LV_FONT_H"
+    FONTS_CHANGED=1
+    ok "added LV_FONT_DECLARE for Montserrat-Bold 24"
+fi
+
+# (d) Generate the bold .c via lv_font_conv if missing. Skip gracefully
+#     when npx isn't installed — the app falls back to regular
+#     Montserrat 24 via wlsdk's _pick_font.
+if [[ -f "$BOLD_C" ]]; then
+    ok "lv_font_montserrat_bold_24.c already generated"
+elif command -v npx >/dev/null 2>&1; then
+    if [[ ! -f "$BOLD_TTF" ]]; then
+        echo "  warn: $BOLD_TTF missing — skipping bold font generation"
+    else
+        echo "  generating lv_font_montserrat_bold_24.c (one-time, ~30s) …"
+        npx --yes lv_font_conv@1.5.3 \
+            --bpp 4 --size 24 --font "$BOLD_TTF" \
+            -r 0x20-0x7F --format lvgl --no-compress \
+            --force-fast-kern-format \
+            -o "$BOLD_C" >/dev/null 2>&1
+        # The generator hard-codes `#include "lvgl.h"`, but the build
+        # tree expects the relative form other Montserrat .c files use.
+        sed -i.bak 's|^#include "lvgl.h"$|#include "../../lvgl.h"|' "$BOLD_C"
+        rm -f "$BOLD_C.bak"
+        FONTS_CHANGED=1
+        ok "generated lv_font_montserrat_bold_24.c"
+    fi
+else
+    echo "  warn: npx not found — install Node (e.g. \`brew install node\`) and"
+    echo "        re-run bootstrap to enable the bold time font. The clock"
+    echo "        widget will fall back to regular Montserrat 24 in the meantime."
+fi
+
+# ---------------------------------------------------------------------------
 # 4. Build the Unix port with the lvgl variant
 
 UNIX_BIN="$LV_DIR/ports/unix/build-lvgl/micropython"
-if [[ -x "$UNIX_BIN" ]]; then
+if [[ -x "$UNIX_BIN" && "$FONTS_CHANGED" == "0" ]]; then
     ok "lv_micropython unix port already built"
 else
+    if [[ "$FONTS_CHANGED" == "1" && -x "$UNIX_BIN" ]]; then
+        step "Font config changed — wiping build to pick up new fonts"
+        rm -rf "$LV_DIR/ports/unix/build-lvgl"
+    fi
     step "Building lv_micropython unix port (variant=lvgl) — ~5 min first time"
     make -C "$LV_DIR/ports/unix" VARIANT=lvgl CFLAGS_EXTRA="$CFLAGS_EXTRA"
     ok "unix port built"
