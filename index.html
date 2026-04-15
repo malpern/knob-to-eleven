@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Knob to Eleven — Hacker Dojo Python Meetup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg-soft: #141414;
+    --fg: #f5f5f3;
+    --muted: #8a8780;
+    --accent: #ff8800;
+    --accent-dim: #c96a00;
+    --rule: #2a2825;
+  }
+
+  .reveal {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 400;
+    color: var(--fg);
+    letter-spacing: -0.01em;
+  }
+
+  .reveal .slides { text-align: left; }
+  .reveal .slides section {
+    height: 100%;
+    padding: 4vh 6vw;
+    box-sizing: border-box;
+  }
+
+  body, .reveal-viewport { background: var(--bg) !important; }
+
+  .reveal h1, .reveal h2, .reveal h3 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    text-transform: none;
+    letter-spacing: -0.03em;
+    color: var(--fg);
+    margin: 0 0 0.4em 0;
+    line-height: 1.05;
+  }
+  .reveal h1 { font-size: 5.5rem; }
+  .reveal h2 { font-size: 3.4rem; }
+  .reveal h3 { font-size: 2.2rem; font-weight: 600; }
+  .reveal p  { font-size: 1.6rem; line-height: 1.45; color: var(--fg); }
+  .reveal li { font-size: 1.45rem; line-height: 1.5; margin: 0.3em 0; }
+  .reveal em { font-style: normal; color: var(--accent); }
+  .reveal strong { color: var(--accent); font-weight: 700; }
+  .reveal a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-dim); }
+
+  .reveal code, .reveal pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .reveal pre {
+    width: 100%;
+    box-shadow: none;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: #000;
+  }
+  .reveal pre code {
+    font-size: 1.2rem;
+    line-height: 1.5;
+    padding: 1.4em;
+    max-height: none;
+  }
+  .reveal code:not(pre code) {
+    color: var(--accent);
+    background: var(--bg-soft);
+    padding: 0.1em 0.4em;
+    border-radius: 3px;
+    font-size: 0.95em;
+  }
+
+  /* Decorative tag */
+  .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    border: 1px solid var(--accent-dim);
+    padding: 0.3em 0.8em;
+    border-radius: 2px;
+    margin-bottom: 1.5em;
+  }
+
+  .muted { color: var(--muted); }
+  .accent { color: var(--accent); }
+
+  /* Title slide */
+  .title-slide {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .title-slide h1 {
+    font-size: 9rem;
+    line-height: 0.9;
+    margin-bottom: 0.2em;
+  }
+  .title-slide h1 .to { color: var(--muted); font-weight: 300; }
+  .title-slide h1 .eleven { color: var(--accent); }
+  .title-slide .subtitle {
+    font-size: 1.5rem;
+    color: var(--muted);
+    margin-top: 1em;
+    max-width: 70%;
+  }
+  .title-slide .byline {
+    position: absolute;
+    bottom: 6vh;
+    left: 6vw;
+    font-size: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  .title-slide .byline .accent { color: var(--accent); }
+
+  /* Divider slide */
+  .divider {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .divider .act-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    margin-bottom: 1em;
+  }
+  .divider h2 { font-size: 6rem; line-height: 1; }
+  .divider .sub { color: var(--muted); font-size: 1.8rem; margin-top: 0.8em; max-width: 70%; }
+
+  /* Split layout */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 4vw; align-items: center; height: 100%; }
+  .split.left-heavy { grid-template-columns: 1.3fr 1fr; }
+  .split.right-heavy { grid-template-columns: 1fr 1.3fr; }
+  .split > div { min-width: 0; }
+  .split img { max-height: 75vh; max-width: 100%; object-fit: contain; border-radius: 4px; }
+
+  /* Big image slide */
+  .full-image {
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+  }
+  .full-image img { max-height: 100vh; max-width: 100vw; object-fit: contain; }
+
+  /* Big word slide */
+  .bigword {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center !important;
+  }
+  .bigword h1 { font-size: 11rem; margin: 0; }
+  .bigword p { color: var(--muted); font-size: 1.5rem; margin-top: 1.5em; max-width: 60%; text-align: center; }
+
+  /* Spec block */
+  .specs {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: var(--muted);
+    border-top: 1px solid var(--rule);
+    padding-top: 1em;
+    margin-top: 2em;
+  }
+  .specs dt { color: var(--accent); float: left; clear: left; width: 9em; }
+  .specs dd { margin-left: 9em; margin-bottom: 0.3em; }
+
+  /* Two-column code compare */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 2vw; align-items: start; margin-top: 1em; }
+  .compare h3 { font-size: 1.1rem; color: var(--muted); margin-bottom: 0.4em; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.15em; }
+  .compare pre code { font-size: 0.85rem !important; }
+
+  /* Quote block */
+  .pullquote {
+    font-size: 2.4rem;
+    line-height: 1.3;
+    font-weight: 300;
+    color: var(--fg);
+    border-left: 3px solid var(--accent);
+    padding-left: 1em;
+    max-width: 80%;
+    margin: 1em 0;
+  }
+  .pullquote cite {
+    display: block;
+    font-size: 1rem;
+    font-style: normal;
+    color: var(--muted);
+    margin-top: 1em;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.1em;
+  }
+
+  /* Clue list (for research slides) */
+  .clues { list-style: none; padding: 0; margin: 1em 0; }
+  .clues li {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: var(--muted);
+    padding: 0.4em 0 0.4em 1.5em;
+    position: relative;
+    border-bottom: 1px solid var(--rule);
+  }
+  .clues li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+  }
+  .clues li strong { color: var(--fg); font-weight: 500; }
+
+  /* Slide number */
+  .reveal .slide-number {
+    color: var(--muted);
+    background: transparent;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* Progress bar */
+  .reveal .progress { color: var(--accent); height: 2px; }
+
+  /* Callout footer on normal slides */
+  .footer {
+    position: absolute;
+    bottom: 4vh;
+    left: 6vw;
+    right: 6vw;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  /* Architecture diagram */
+  .arch-diagram {
+    width: 100%;
+    max-width: 90vw;
+    margin: 2em auto 0 auto;
+  }
+  .arch-box {
+    fill: var(--bg-soft);
+    stroke: var(--rule);
+    stroke-width: 1.5;
+  }
+  .arch-box.accent { stroke: var(--accent); }
+  .arch-text { fill: var(--fg); font-family: 'Inter', sans-serif; font-weight: 600; font-size: 18px; }
+  .arch-text.small { fill: var(--muted); font-weight: 400; font-size: 13px; font-family: 'JetBrains Mono', monospace; }
+  .arch-text.accent { fill: var(--accent); }
+  .arch-arrow { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .arch-arrow-head { fill: var(--accent); }
+
+  /* tick marks on title for texture */
+  .tick-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 2em;
+  }
+  .tick-row span {
+    width: 2px;
+    height: 16px;
+    background: var(--rule);
+  }
+  .tick-row span.on { background: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- 1. TITLE -->
+<!-- ============================================================ -->
+<section class="title-slide">
+  <div class="tag">Hacker Dojo · Python Meetup · Apr 2026</div>
+  <h1>
+    KNOB<br>
+    <span class="to">to</span> <span class="eleven">ELEVEN.</span>
+  </h1>
+  <p class="subtitle">
+    A $439 mechanical keyboard has a tiny vertical LCD where a knob used to be.<br>
+    Let's write Python for it — and reverse-engineer everything we need along the way.
+  </p>
+  <div class="tick-row">
+    <span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span>
+    <span class="on"></span>
+  </div>
+  <div class="byline">
+    MICAH ALPERN · <span class="accent">github.com/malpern/knob-to-eleven</span>
+  </div>
+  <aside class="notes">
+    Hold up the physical knob if you brought it. Read the subtitle aloud. The tick row subtly hints at "to eleven" — don't explain it yet.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 2. THE DEVICE -->
+<!-- ============================================================ -->
+<section>
+  <div class="split right-heavy">
+    <div>
+      <div class="tag">The hardware</div>
+      <h2>A <span class="accent">keyboard</span>.<br>With a <span class="accent">screen</span>.</h2>
+      <p class="muted">Work Louder <em>k·no·b·1</em> — low-profile mechanical.<br>Designed by Ben Fryc. Batch 2 shipping Q2 2026.</p>
+      <dl class="specs">
+        <dt>PRICE</dt><dd>$439 USD</dd>
+        <dt>SCREEN</dt><dd>100 × 310 px full-color LCD</dd>
+        <dt>KNOBS</dt><dd>2 × rotary encoders (one programmable)</dd>
+        <dt>BODY</dt><dd>CNC aluminum, silver + gunmetal</dd>
+        <dt>RUNTIME</dt><dd>MicroPython + LVGL (per firmware)</dd>
+        <dt>DEV SDK</dt><dd><span class="accent">not publicly documented yet</span></dd>
+      </dl>
+    </div>
+    <div>
+      <img src="assets/knob-01.png" alt="Work Louder Nomad E keyboard with dial">
+    </div>
+  </div>
+  <aside class="notes">
+    It's a macropad with a vertical LCD where one of the knobs would be. You can run Python on it. The knob SDK is not shipped, but we can infer it.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 3. THE PROBLEM -->
+<!-- ============================================================ -->
+<section class="bigword">
+  <h1>NO <span class="accent">SIMULATOR</span>.</h1>
+  <p>No dev tools. No preview. No public SDK docs.<br>Just a firmware image and a <em>"UX playground"</em> promise.</p>
+  <aside class="notes">
+    That's the problem. If you want to build for this thing, you wait. Or — you build the dev environment yourself.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 4. THE THESIS -->
+<!-- ============================================================ -->
+<section>
+  <div class="tag">The thesis</div>
+  <h2>So I built one.</h2>
+  <p style="font-size: 1.9rem; max-width: 80%; margin-top: 1em;">
+    <code>eleven</code> is a pixel-accurate simulator + hot-reload dev loop + RPC bridge for Work Louder devices.
+    Write <code>app.py</code> on your Mac, see it render instantly, deploy the same file to the device when the SDK lands.
+  </p>
+  <p class="muted" style="margin-top: 2em; font-size: 1.2rem;">
+    Open source · MIT · ~2,100 lines of Python + Swift + a pinch of C.
+  </p>
+  <aside class="notes">
+    One sentence thesis. Same file, host and device. MIT. Let's rewind to how I even figured out what to build.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 5. ACT 0 DIVIDER -->
+<!-- ============================================================ -->
+<section class="divider">
+  <div class="act-num">ACT · 0</div>
+  <h2>Before<br>the code:<br><span class="accent">research.</span></h2>
+  <p class="sub">Three weeks of detective work before I wrote a single line of the simulator.</p>
+  <aside class="notes">
+    This is the part most devs skip. For an unreleased platform, it's the most important part.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 6. WHO DESIGNED IT -->
+<!-- ============================================================ -->
+<section>
+  <div class="tag">Clue #1 — the designer</div>
+  <h2>Ben <span class="accent">Fryc</span>.</h2>
+  <p class="muted" style="font-size: 1.3rem;">
+    (Not Ben <em>Fry</em> of Processing. Different guy. Easy mistake.)
+  </p>
+  <ul class="clues">
+    <li><strong>3D / motion designer</strong>, Michigan · full-time at Framer</li>
+    <li><strong>Started the knob in Figma, July 2023</strong> · partnered with Work Louder's WrkShop program</li>
+    <li>Past clients: <strong>Google, Figma, Loom, Wealthsimple</strong></li>
+    <li>Signature aesthetic: <strong>modern-retro tactile-tech</strong> · soft shadows · matte plastics · one accent color</li>
+    <li>That accent color: <strong style="color: var(--accent);">#FF8800</strong></li>
+  </ul>
+  <aside class="notes">
+    I spent more time on the designer's Instagram than on setup.py. Worth it — this became the north star for the simulator's UI and the generated-app aesthetic.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 7. THE QUOTE / UX PLAYGROUND -->
+<!-- ============================================================ -->
+<section>
+  <div class="tag">Clue #2 — the intent</div>
+  <blockquote class="pullquote">
+    The 100×310 LCD is a <span class="accent">UX playground</span>. Down the road, we want people to be able to create their own features.
+    <cite>— Ben Fryc, knob.design</cite>
+  </blockquote>
+  <p class="muted" style="margin-top: 2em;">
+    That sentence is the entire reason this project exists.
+    <em>"We want people to create their own features"</em> — so let's make that easy.
+  </p>
+  <aside class="notes">
+    This is my permission slip. The designer explicitly wanted this. I'm just making it possible sooner.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 8. THE SDK HUNT -->
+<!-- ============================================================ -->
+<section>
+  <div class="tag">Clue #3 — the SDK shape</div>
+  <h2>The firmware already<br>tells us <span class="accent">a lot</span>.</h2>
+  <ul class="clues">
+    <li><strong>Nomad E</strong> — Work Louder's other device — has developer-facing Python hooks in its firmware</li>
+    <li>The stack: <strong>MicroPython runtime + LVGL GUI + a <code>wlsdk</code> module</strong> (ui, time, rpc, sys)</li>
+    <li>The k·no·b·1 runs the same firmware family — different form factor, same runtime</li>
+    <li>The bet: <strong>same runtime ⇒ the same <code>app.py</code> will run on both</strong></li>
+  </ul>
+  <p class="muted" style="margin-top: 1.5em;">
+    Catalogued the API surface. Built the simulator to match. Wait for official docs later.
+  </p>
+  <aside class="notes">
+    This was the insight that unlocked everything. The knob SDK doesn't exist yet, but its parent does.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 9. GHIDRA -->
+<!-- ============================================================ -->
+<section>
+  <div class="tag">Clue #4 — into the firmware</div>
+  <h2>Then I opened<br>it in <span class="accent">Ghidra</span>.</h2>
+  <p style="font-size: 1.4rem; max-width: 80%;">
+    Docs tell you the shape of the API. The firmware tells you the <em>truth</em>.
+  </p>
+  <ul class="clues">
+    <li>Pulled the Nomad E firmware image</li>
+    <li><strong>Ghidra headless analyzer</strong> → decompiled → C-ish pseudocode</li>
+    <li>Hunted for <strong>LVGL font byte-arrays</strong> in rodata (so my simulator renders the same glyphs)</li>
+    <li>Mapped the <strong>real <code>wlsdk</code> API surface</strong> vs. what the docs claim</li>
+    <li>Documented everything in <code>docs/wlsdk-api-surface.md</code></li>
+  </ul>
+  <aside class="notes">
+    Keyboard-nerd applause line: yes, Ghidra on a macropad. Peak yak-shave. Also: this is where I learned the SDK has about 3x more API surface than the docs mention.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 10. RESEARCH → ARTIFACTS -->
+<!-- ============================================================ -->
+<section>
+  <div class="tag">Output of Act 0</div>
+  <h2>Research <span class="accent">→</span> artifacts.</h2>
+  <div class="split" style="margin-top: 2em;">
+    <div>
+      <h3 style="color: var(--accent); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; font-size: 1rem;">docs/</h3>
+      <ul class="clues">
+        <li><strong>research-ben-fryc.md</strong> — designer archaeology</li>
+        <li><strong>design-language.md</strong> — extracted visual principles</li>
+        <li><strong>wlsdk-api-surface.md</strong> — Ghidra findings</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="color: var(--accent); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; font-size: 1rem;">What it unlocked</h3>
+      <ul class="clues">
+        <li>A <strong>coherent visual language</strong> for generated apps</li>
+        <li>A <strong>target API shape</strong> to simulate</li>
+        <li>A <strong>public project page</strong> with credibility</li>
+      </ul>
+    </div>
+  </div>
+  <p class="muted" style="margin-top: 2em; font-style: italic;">
+    Reverse engineering is a first-class dev activity when the platform docs don't exist yet.
+  </p>
+  <aside class="notes">
+    The research became three Markdown files, a design system, and the project's public identity. Good input → good output.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 11. ACT I DIVIDER -->
+<!-- ============================================================ -->
+<section class="divider">
+  <div class="act-num">ACT · I</div>
+  <h2>Python<br>on a <span class="accent">knob.</span></h2>
+  <p class="sub">A real MicroPython runtime. LVGL. 48 lines for "hello world."</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 12. HELLO.PY -->
+<!-- ============================================================ -->
+<section>
+  <div class="split right-heavy">
+    <div>
+      <div class="tag">examples/hello.py</div>
+      <h3>Looks familiar?</h3>
+      <p class="muted" style="font-size: 1.15rem;">
+        <code>start()</code> / <code>update()</code> / <code>end()</code> — if you've touched pygame, you know this shape.
+      </p>
+      <p style="font-size: 1.15rem; margin-top: 1.5em;">
+        <em>The exact same file runs on the device.</em>
+      </p>
+      <p class="muted" style="font-size: 1rem; margin-top: 1em;">
+        <code>lv_root</code> is injected. <code>wlsdk</code> gives you time, rpc, ui, sys.
+      </p>
+    </div>
+    <div>
+<pre><code class="language-python" data-trim data-noescape>import lvgl as lv
+import wlsdk
+
+arc = None; label = None
+
+def start():
+    global arc, label
+    scr = lv_root
+    arc = lv.arc(scr)
+    arc.set_size(84, 84)
+    arc.align(lv.ALIGN.CENTER, 0, -50)
+    arc.set_style_arc_color(
+        lv.color_hex(<span class="accent">0xff8800</span>),
+        lv.PART.INDICATOR,
+    )
+    label = lv.label(scr)
+    label.set_text("0%")
+
+def update():
+    t = wlsdk.time.get_elapsed()
+    pct = int((t * 25) % 101)
+    arc.set_value(pct)
+    label.set_text("{}%".format(pct))</code></pre>
+    </div>
+  </div>
+  <aside class="notes">
+    48 lines total. That's the whole "hello world" — a progress arc that fills 25% per second. This is real MicroPython, not a DSL on top of it.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 13. LVGL -->
+<!-- ============================================================ -->
+<section>
+  <div class="split">
+    <div>
+      <div class="tag">The GUI layer</div>
+      <h2><span class="accent">LVGL.</span></h2>
+      <p>The embedded-GUI library inside half the smartwatches you own.</p>
+      <ul class="clues">
+        <li>C library, MIT-licensed, ~500KB</li>
+        <li>Bindings for MicroPython → full object API</li>
+        <li>Arcs, charts, labels, styles, animations</li>
+        <li>Renders to <strong>any framebuffer</strong> — SDL on host, SPI LCD on device</li>
+      </ul>
+    </div>
+    <div style="text-align: center;">
+      <img src="assets/clock-native.png" style="max-height: 60vh; filter: drop-shadow(0 0 40px rgba(255,136,0,0.3));">
+      <p class="muted" style="font-size: 0.9rem; font-family: 'JetBrains Mono', monospace; margin-top: 1em; text-align: center;">
+        ACTUAL FRAMEBUFFER · 100×310 · RENDERED ON MAC
+      </p>
+    </div>
+  </div>
+  <aside class="notes">
+    LVGL is the unsexy hero of embedded GUIs. This clock screenshot was rendered by my Mac, not the device — same pixels as the real thing.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 14. THE DSL -->
+<!-- ============================================================ -->
+<section>
+  <div class="tag">eleven_dsl.py · optional sugar</div>
+  <h3>Raw LVGL <span class="muted">vs</span> <span class="accent">opinionated DSL</span></h3>
+  <div class="compare">
+    <div>
+      <h3>pomodoro.py — 120 lines</h3>
+<pre><code class="language-python" data-trim>arc = lv.arc(scr)
+arc.set_size(84, 84)
+arc.align(lv.ALIGN.CENTER, 0, -50)
+arc.set_range(0, 100)
+arc.set_rotation(270)
+arc.set_bg_angles(0, 360)
+arc.set_style_arc_color(
+  lv.color_hex(0xff8800),
+  lv.PART.INDICATOR)
+arc.set_style_arc_width(
+  8, lv.PART.INDICATOR)
+# ...30 more lines</code></pre>
+    </div>
+    <div>
+      <h3>pomodoro_dsl.py — 80 lines</h3>
+<pre><code class="language-python" data-trim>from eleven_dsl import (
+  theme, screen, dial,
+  segment, label,
+)
+
+scr  = screen()
+arc  = dial(scr, value=100,
+            offset_y=-50)
+time = segment(scr, text="25:00",
+               offset_y=25)
+stat = label(scr, text="READY",
+             color=theme.muted,
+             align="bottom")</code></pre>
+    </div>
+  </div>
+  <p class="muted" style="margin-top: 1.5em;">
+    Widgets derived from the Fryc research — <strong>theme-driven</strong>, knob-native sizing, no <code>color_hex</code> sprawl.
+  </p>
+  <aside class="notes">
+    The DSL isn't required. Raw LVGL still works. But the DSL bakes in the design language so generated apps look consistent.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 15. ACT II DIVIDER -->
+<!-- ============================================================ -->
+<section class="divider">
+  <div class="act-num">ACT · II</div>
+  <h2>The<br><span class="accent">architecture.</span></h2>
+  <p class="sub">Two layers, four language boundaries, one promise: <em>the device is just another frontend.</em></p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 16. ARCHITECTURE DIAGRAM -->
+<!-- ============================================================ -->
+<section>
+  <div class="tag">The stack</div>
+  <svg class="arch-diagram" viewBox="0 0 1000 560" xmlns="http://www.w3.org/2000/svg">
+    <!-- eleven-mac -->
+    <rect class="arch-box" x="50" y="20" width="900" height="90" rx="4"/>
+    <text class="arch-text accent" x="70" y="50">eleven-mac</text>
+    <text class="arch-text small" x="70" y="75">SwiftUI · Metal · Liquid Glass</text>
+    <text class="arch-text small" x="70" y="95">preview · inspector · chat-to-app · deploy</text>
+
+    <!-- arrow down -->
+    <path class="arch-arrow" d="M 500 115 L 500 145" />
+    <polygon class="arch-arrow-head" points="495,140 505,140 500,150"/>
+    <text class="arch-text small" x="520" y="135">framebuffer + input events</text>
+
+    <!-- eleven-core outer -->
+    <rect class="arch-box accent" x="50" y="155" width="900" height="260" rx="4"/>
+    <text class="arch-text accent" x="70" y="185">eleven-core</text>
+    <text class="arch-text small" x="70" y="205">platform-neutral · MIT · the runtime</text>
+
+    <!-- host.py etc -->
+    <rect class="arch-box" x="80" y="225" width="840" height="70" rx="3"/>
+    <text class="arch-text" x="100" y="255" style="font-size: 15px;">host.py · render_host.py · worker_runner.py</text>
+    <text class="arch-text small" x="100" y="278">lifecycle · hot reload · RPC bridge · golden-frame tests</text>
+
+    <!-- FFI arrow -->
+    <path class="arch-arrow" d="M 500 300 L 500 325" />
+    <polygon class="arch-arrow-head" points="495,320 505,320 500,330"/>
+    <text class="arch-text small" x="520" y="317">FFI</text>
+
+    <!-- mp+lvgl+sdl -->
+    <rect class="arch-box" x="80" y="335" width="840" height="65" rx="3"/>
+    <text class="arch-text" x="100" y="365" style="font-size: 15px;">lv_micropython  +  LVGL  +  SDL2 (host) / TFT (device)</text>
+    <text class="arch-text small" x="100" y="385">runs your <tspan fill="#ff8800">app.py</tspan> unmodified</text>
+
+    <!-- arrow to device -->
+    <path class="arch-arrow" d="M 500 420 L 500 455" stroke-dasharray="4,4"/>
+    <polygon class="arch-arrow-head" points="495,450 505,450 500,460"/>
+    <text class="arch-text small" x="520" y="440">same app.py, no changes</text>
+
+    <!-- device -->
+    <rect class="arch-box" x="50" y="470" width="900" height="70" rx="4"/>
+    <text class="arch-text accent" x="70" y="500">Work Louder k·no·b·1</text>
+    <text class="arch-text small" x="70" y="522">ARM · MicroPython · LVGL · TFT LCD</text>
+  </svg>
+  <aside class="notes">
+    Two boxes. Two layers. The core is MIT and platform-neutral — someone could build a VSCode extension or Linux UI on top without touching core. The device is just another frontend for the same runtime.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 17. HOT RELOAD + RPC -->
+<!-- ============================================================ -->
+<section>
+  <div class="tag">The developer experience</div>
+  <h2>Hot reload<br><span class="muted">+</span> <span class="accent">RPC bridge.</span></h2>
+  <div class="split" style="margin-top: 2em;">
+    <div>
+      <h3 style="color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 1rem; letter-spacing: 0.1em; text-transform: uppercase;">&lt;100ms hot reload</h3>
+      <ul class="clues">
+        <li>FSEvents watches <code>app.py</code></li>
+        <li><code>end()</code> tears down LVGL tree</li>
+        <li><code>importlib.reload()</code></li>
+        <li><code>start()</code> rebuilds</li>
+      </ul>
+      <p class="muted" style="font-size: 1rem; margin-top: 1em;">
+        It's <code>importlib.reload</code> with GUI-state discipline.
+      </p>
+    </div>
+    <div>
+      <h3 style="color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 1rem; letter-spacing: 0.1em; text-transform: uppercase;">JSON-RPC bridge</h3>
+<pre style="margin-top: 0.5em;"><code class="language-python" data-trim>
+# worker.py polls top(1), pushes:
+rpc.send("cpu.update", {"value": 42})
+
+# app.py subscribes:
+@wlsdk.rpc.register("cpu.update")
+def on_cpu(ctx, params):
+    target = params["value"]
+</code></pre>
+      <p class="muted" style="font-size: 1rem; margin-top: 0.5em;">
+        Host or device — the app doesn't know which.
+      </p>
+    </div>
+  </div>
+  <aside class="notes">
+    This is the "demo magic" slide. Hot reload via FSEvents, RPC via JSON. Same mechanism works on host and over USB to the device.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 18. DEMO DIVIDER -->
+<!-- ============================================================ -->
+<section class="bigword">
+  <h1 class="accent">DEMO.</h1>
+  <p>Live CPU meter · hot reload · RPC · knob as system dashboard.</p>
+  <aside class="notes">
+    Switch to terminal + simulator window. Have backup video queued. Run:
+    mac/.build/debug/eleven run examples/cpu/
+    Edit a color or size, save, watch it update.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 19. TESTING -->
+<!-- ============================================================ -->
+<section>
+  <div class="tag">Bonus round</div>
+  <h2>How do you test<br>a GUI on a <span class="accent">dial</span>?</h2>
+  <div class="split" style="margin-top: 2em;">
+    <div>
+      <ul class="clues">
+        <li>Headless renderer exposes "render 1 frame → PNG"</li>
+        <li><strong>Golden-frame diffing</strong> in CI · no hardware required</li>
+        <li><code>tests/run_all.sh</code> · 11 test files · 6 currently green</li>
+        <li>Pre-merge gate for design regressions</li>
+      </ul>
+    </div>
+    <div>
+<pre><code class="language-python" data-trim>def test_hello_renders():
+    frame = render_host.run_frame(
+      "examples/hello.py",
+      at_time=1.0,
+    )
+    assert_frame_matches(
+      frame,
+      "golden/hello_t1.png",
+    )</code></pre>
+    </div>
+  </div>
+  <aside class="notes">
+    Headless renderer + golden-frame diffing. You can test a dial GUI in CI without any hardware. 11 test files, 6 green.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 20. WHAT'S NEXT -->
+<!-- ============================================================ -->
+<section>
+  <div class="tag">Roadmap</div>
+  <h2>What's next.</h2>
+  <ul class="clues">
+    <li><strong>SwiftUI shell</strong> — native preview window + widget inspector</li>
+    <li><strong>Chat-to-app</strong> — describe a widget in English, get <code>app.py</code></li>
+    <li><strong>Device deploy</strong> — one-click push over USB when the knob SDK lands</li>
+    <li><strong>More widgets</strong> — distilled from the Fryc design research</li>
+    <li><strong>Community forks</strong> — VSCode extension? Linux shell? <em>Please.</em></li>
+  </ul>
+  <p class="muted" style="margin-top: 2em;">
+    The core is MIT and platform-neutral. Everything above the core is swappable.
+  </p>
+  <aside class="notes">
+    Clear call to action. The Mac shell is the reference frontend, not the only one.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 21. CLOSER -->
+<!-- ============================================================ -->
+<section class="bigword">
+  <h1>GO TO <span class="accent">11.</span></h1>
+  <p style="margin-top: 2em;">
+    <code style="font-size: 1.3rem; background: transparent; color: var(--accent);">github.com/malpern/knob-to-eleven</code>
+  </p>
+  <p class="muted" style="margin-top: 1em; font-size: 1.1rem;">
+    MIT · PRs welcome · bring weird app ideas
+  </p>
+  <div class="tick-row" style="margin-top: 3em;">
+    <span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span>
+    <span class="on"></span>
+  </div>
+  <aside class="notes">
+    Thank the room. Say: questions? And: yes — before you ask — it almost runs Doom.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- 22. Q&A -->
+<!-- ============================================================ -->
+<section class="bigword">
+  <h1 class="muted">Q <span class="accent">&</span> A</h1>
+  <p>
+    <em>"Does it run DOOM?"</em><br>
+    100×310 pixels, one encoder — <em>Doom-ish.</em>
+  </p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'fade',
+  transitionSpeed: 'fast',
+  backgroundTransition: 'fade',
+  controls: false,
+  progress: true,
+  center: false,
+  width: 1400,
+  height: 850,
+  margin: 0.02,
+  minScale: 0.3,
+  maxScale: 2.0,
+  plugins: [ RevealHighlight, RevealNotes ],
+});
+</script>
+</body>
+</html>
